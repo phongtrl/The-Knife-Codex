@@ -11,6 +11,25 @@ const RARITY_LABEL = {
   epic: 'Epic'
 };
 
+/* Whetstone grit tiers. In the quiz we show only the tier NAME so the numeric
+   range never gives the answer away. The full ranges live in the grit guide
+   list rendered in the Dojo, which players can consult like a reference sheet. */
+const GRIT_LABEL = {
+  'Coarse #120–#400': 'Coarse',
+  'Medium #800–#2000': 'Medium',
+  'Fine #3000–#5000': 'Fine',
+  'Very Fine #6000–#8000': 'Very Fine',
+  'Ultra Fine #10000+': 'Ultra Fine'
+};
+
+const GRIT_GUIDE = [
+  { name: 'Coarse',     range: '#120–#400',   use: 'Repair chips · reprofile · thin the blade', emoji: '🪨' },
+  { name: 'Medium',     range: '#800–#2000',  use: 'Main sharpening · best all-purpose stone',  emoji: '🧱' },
+  { name: 'Fine',       range: '#3000–#5000', use: 'Refine the edge · everyday polish',         emoji: '🌟' },
+  { name: 'Very Fine',  range: '#6000–#8000', use: 'Extra keenness before stropping',           emoji: '✨' },
+  { name: 'Ultra Fine', range: '#10000+',     use: 'Mirror polish · single-bevel finishing',    emoji: '💎' }
+];
+
 const RANKS = [
   { min: 0,   name: 'Apprentice',  emoji: '🌱' },
   { min: 120, name: 'Line Cook',   emoji: '🍳' },
@@ -98,7 +117,9 @@ function keywordEmoji(text) {
 function optionMeta(opt) {
   const k = state.byId[opt];
   if (k) return { label: k.name, emoji: k.emoji };
-  return { label: opt, emoji: keywordEmoji(opt) };
+  // Grit options collapse to their tier name; emoji is still keyed off the
+  // original text (which carries the #range) so the icon stays accurate.
+  return { label: GRIT_LABEL[opt] || opt, emoji: keywordEmoji(opt) };
 }
 
 function rankFor(xp) {
@@ -392,6 +413,23 @@ function renderDojoIntro() {
   $('#quiz-begin').addEventListener('click', startQuiz);
 }
 
+function renderGritGuide() {
+  const box = $('#grit-guide');
+  if (!box) return;
+  box.innerHTML = `
+    <div class="grit-guide-title">Whetstone Grit Guide</div>
+    <div class="grit-list">
+      ${GRIT_GUIDE.map(g => `
+        <div class="grit-item">
+          <span class="grit-em">${g.emoji}</span>
+          <div class="grit-info">
+            <span class="grit-name">${g.name} <span class="grit-range">${g.range}</span></span>
+            <span class="grit-use">${g.use}</span>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
 /* ---------- Boot ---------- */
 async function init() {
   loadProgress();
@@ -425,6 +463,7 @@ async function init() {
   renderGrid();
   renderCompare();
   renderDojoIntro();
+  renderGritGuide();
   updateHud();
 
   // events

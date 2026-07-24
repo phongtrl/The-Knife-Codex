@@ -503,6 +503,52 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 .quiz-result h4 { font-family: var(--font-round); font-size: 1.8rem; margin: 0.6rem 0; }
 .quiz-result p { color: rgba(244,241,234,0.75); margin-bottom: 1.4rem; }
 
+/* ---------- Grit guide (Dojo reference) ---------- */
+.grit-guide {
+  position: relative;
+  z-index: 2;
+  margin-top: 1.8rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid rgba(244, 241, 234, 0.14);
+}
+.grit-guide-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--wood);
+  margin-bottom: 1rem;
+}
+.grit-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+.grit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 241, 234, 0.05);
+  border: 1px solid rgba(244, 241, 234, 0.12);
+}
+.grit-item .grit-em { font-size: 1.3rem; line-height: 1; }
+.grit-info { display: flex; flex-direction: column; gap: 0.2rem; }
+.grit-name {
+  font-family: var(--font-round);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--paper);
+}
+.grit-name .grit-range {
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--wood);
+  margin-left: 0.3rem;
+}
+.grit-use { font-size: 0.78rem; color: rgba(244, 241, 234, 0.68); line-height: 1.4; }
+
 /* ---------- Modal ---------- */
 .modal-back {
   position: fixed;
@@ -657,6 +703,41 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .xp-track { display: none; }
   .answers { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: 1fr; }
-  .dojo { padding: 1.8rem; }
+  .dojo { padding: 1.8rem 1.4rem; }
   .brand .sub { display: none; }
+  .hero { padding: 3rem 0 1.5rem; }
+  .hero p { font-size: 1rem; }
+  .section { padding: 2rem 0; }
+  .scenario-card { padding: 1.3rem; }
+  .scenario-card .q-text { font-size: 1.15rem; }
+  .grit-list { grid-template-columns: 1fr; }
+  .modal-hero { padding: 1.4rem 1.4rem 1.1rem; }
+  .modal-body { padding: 1.3rem 1.4rem 1.6rem; }
 }
+
+@media (max-width: 480px) {
+  body { padding-bottom: 4rem; }
+  .topbar .wrap { padding: 0.7rem 0; gap: 0.5rem; }
+  .brand { gap: 0.5rem; }
+  .brand .mark { width: 32px; height: 32px; font-size: 1rem; }
+  .brand h1 { font-size: 0.9rem; }
+  .hud { gap: 0.55rem; }
+  .hud .stat .label { font-size: 0.55rem; }
+  .hud .stat .value { font-size: 0.95rem; }
+  .hud .rank-badge { padding: 0.3rem 0.6rem; font-size: 0.66rem; }
+  .hero { padding: 2.4rem 0 1rem; }
+  .hero .eyebrow { margin-bottom: 0.9rem; }
+  .hero .cta-row { flex-direction: column; }
+  .hero .cta-row .btn { width: 100%; }
+  .btn { padding: 0.75rem 1.3rem; }
+  .section-head { margin-bottom: 1.3rem; }
+  .grid { grid-template-columns: 1fr; gap: 0.9rem; }
+  .knife-card { padding: 1.2rem; }
+  .dojo { padding: 1.5rem 1.1rem; }
+  .scenario-card { padding: 1.1rem; }
+  .scenario-card .q-text { font-size: 1.05rem; }
+  .quiz-foot { flex-wrap: wrap; gap: 0.6rem; }
+  .grit-item { padding: 0.7rem 0.85rem; }
+  .toast { max-width: 90vw; text-align: center; }
+}
+

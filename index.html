@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Japanese Knife — The Blade Codex</title>
+  <meta name="description" content="A calm, gamified guide to Japanese kitchen knives. Discover, compare, and master each blade." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body>
+
+  <!-- ===== Top bar / HUD ===== -->
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">
+        <span class="mark">刃</span>
+        <div>
+          <h1>Your Japanese Knife</h1>
+          <div class="sub">The Blade Codex</div>
+        </div>
+      </div>
+      <div class="hud">
+        <div class="stat hide-sm">
+          <div class="label">Collected</div>
+          <div class="value"><span id="hud-collected">0</span>/<span id="hud-total">0</span></div>
+        </div>
+        <div class="stat">
+          <div class="label">XP</div>
+          <div class="value" id="hud-xp">0</div>
+        </div>
+        <div class="xp-track" title="Progress to next rank">
+          <div class="xp-fill" id="hud-xp-fill"></div>
+        </div>
+        <span class="rank-badge" id="hud-rank">Apprentice</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero wrap">
+    <span class="eyebrow">A gamified blade codex</span>
+    <h2>Meet the knives of the<br /><span class="accent">Japanese kitchen</span>.</h2>
+    <p>
+      Ten blades, each with a purpose. Explore the codex, learn what every knife
+      is made for, then test your instincts in the Dojo. Collect them all.
+    </p>
+    <div class="cta-row">
+      <button class="btn" id="cta-explore">Open the Codex</button>
+      <button class="btn ghost" id="cta-dojo">Enter the Dojo</button>
+    </div>
+  </section>
+
+  <!-- ===== Codex / Collection ===== -->
+  <section class="section wrap" id="codex">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Chapter 01</div>
+        <h3>The Blade Codex</h3>
+      </div>
+      <p>Tap any card to inspect a blade. View it once to add it to your collection.</p>
+    </div>
+
+    <div class="filters" id="filters"></div>
+    <div class="grid" id="knife-grid"></div>
+  </section>
+
+  <!-- ===== Compare ===== -->
+  <section class="section wrap" id="compare">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Chapter 02</div>
+        <h3>Side-by-Side</h3>
+      </div>
+      <p>A quick reference to compare length, edge, best use, and difficulty at a glance.</p>
+    </div>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Knife</th>
+            <th>Best For</th>
+            <th>Length</th>
+            <th>Edge</th>
+            <th>Difficulty</th>
+          </tr>
+        </thead>
+        <tbody id="compare-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== Dojo / Quiz ===== -->
+  <section class="section wrap" id="dojo">
+    <div class="dojo">
+      <div class="kicker">Chapter 03</div>
+      <h3>The Dojo</h3>
+      <p class="dojo-sub">Match blades to tasks, whetstone grits to jobs, and master knife care. Earn XP and climb the ranks.</p>
+
+      <div class="quiz-stage" id="quiz-stage">
+        <!-- injected by JS -->
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot wrap">
+    <div class="divider"></div>
+    <p>Crafted with restraint · 一期一会 · Every cut, once in a lifetime.</p>
+  </footer>
+
+  <!-- ===== Modal ===== -->
+  <div class="modal-back" id="modal-back">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-hero">
+        <button class="close" id="modal-close" aria-label="Close">✕</button>
+        <div class="m-emoji" id="m-emoji">🔪</div>
+        <h3 id="m-name">Knife <span class="kanji" id="m-kanji"></span></h3>
+        <div class="m-role" id="m-role"></div>
+        <div class="m-trans" id="m-trans"></div>
+      </div>
+      <div class="modal-body">
+        <p class="lead" id="m-purpose"></p>
+
+        <div class="detail-block">
+          <div class="d-title">Blade Stats</div>
+          <div class="stat-grid" id="m-stats"></div>
+        </div>
+
+        <div class="detail-block">
+          <div class="d-title">Best For</div>
+          <div class="tag-list" id="m-best"></div>
+        </div>
+
+        <div class="detail-block">
+          <div class="d-title">Not Ideal For</div>
+          <div class="tag-list avoid" id="m-avoid"></div>
+        </div>
+
+        <div class="detail-block">
+          <div class="d-title">Specs</div>
+          <div id="m-specs"></div>
+        </div>
+
+        <div class="tip-box">
+          <span class="bulb">💡</span>
+          <span id="m-tip"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-zone" id="toast-zone"></div>
+
+  <script src="knives-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

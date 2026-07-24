@@ -662,7 +662,7 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .brand .sub { display: none; }
   .hero { padding: 3rem 0 1.5rem; }
   .hero p { font-size: 1rem; }
-  .section { padding: 2rem 0; }
+  .section { padding: 1.4rem 0; }
   .scenario-card { padding: 1.3rem; }
   .scenario-card .q-text { font-size: 1.15rem; }
   .modal-hero { padding: 1.4rem 1.4rem 1.1rem; }
@@ -684,6 +684,7 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .hero .cta-row { flex-direction: column; }
   .hero .cta-row .btn { width: 100%; }
   .btn { padding: 0.75rem 1.3rem; }
+  .section { padding: 1rem 0; }
   .section-head { margin-bottom: 1.3rem; }
   .grid { grid-template-columns: 1fr; gap: 0.9rem; }
   .knife-card { padding: 1.2rem; }

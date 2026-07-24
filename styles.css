@@ -209,6 +209,7 @@ body {
   font-weight: 700;
 }
 .section-head p { color: var(--ink-soft); font-size: 0.95rem; max-width: 420px; }
+.section-head.sub { margin-top: 2.8rem; }
 
 /* ---------- Filter chips ---------- */
 .filters {
@@ -531,6 +532,13 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   border-radius: var(--radius-sm);
   background: rgba(244, 241, 234, 0.05);
   border: 1px solid rgba(244, 241, 234, 0.12);
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.grit-item:hover {
+  border-color: var(--wood);
+  background: rgba(244, 241, 234, 0.1);
+  transform: translateY(-2px);
 }
 .grit-item .grit-em { font-size: 1.3rem; line-height: 1; }
 .grit-info { display: flex; flex-direction: column; gap: 0.2rem; }

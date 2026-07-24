@@ -49,6 +49,8 @@ const state = {
   quiz: [],          // full question pool
   round: [],         // the randomized subset for the current run
   byId: {},
+  stones: [],        // whetstone grit tiers
+  stoneById: {},
   filter: 'all',
   collected: new Set(),
   xp: 0,
@@ -234,6 +236,23 @@ function renderCompare() {
   });
 }
 
+/* ---------- Whetstone compare table ---------- */
+function renderStoneCompare() {
+  const body = $('#stone-compare-body');
+  if (!body) return;
+  body.innerHTML = state.stones.map(s => `
+    <tr data-id="${s.id}">
+      <td class="name-cell"><span class="em">${s.emoji}</span>${s.name}</td>
+      <td><span class="pill">${s.grit}</span></td>
+      <td>${s.bestFor[0]}</td>
+      <td>${s.stage}</td>
+      <td>${diffDots(s.fineness)}</td>
+    </tr>`).join('');
+  $$('#stone-compare-body tr').forEach(row => {
+    row.addEventListener('click', () => openStoneModal(row.dataset.id));
+  });
+}
+
 /* ---------- Modal ---------- */
 function openModal(id) {
   const k = state.byId[id];
@@ -285,6 +304,44 @@ function openModal(id) {
 function closeModal() {
   $('#modal-back').classList.remove('open');
   document.body.style.overflow = '';
+}
+
+/* Opens the shared detail modal for a whetstone grit tier. Reuses the knife
+   modal layout but with stone-specific fields (no collection reward). */
+function openStoneModal(id) {
+  const s = state.stoneById[id];
+  if (!s) return;
+
+  $('#m-emoji').textContent = s.emoji;
+  $('#m-name').innerHTML = `${s.name} <span class="kanji">${s.kanji}</span>`;
+  $('#m-role').textContent = s.role;
+  $('#m-trans').textContent = `“${s.translation}” · Grit ${s.grit}`;
+  $('#m-purpose').textContent = s.purpose;
+
+  $('#m-stats').innerHTML = Object.entries(s.stats).map(([key, val]) => `
+    <div class="stat-row">
+      <div class="s-label"><span>${key}</span><span>${val}/10</span></div>
+      <div class="s-bar"><i style="width:0%" data-w="${val * 10}"></i></div>
+    </div>`).join('');
+
+  $('#m-best').innerHTML = s.bestFor.map(t => `<span class="tag">${t}</span>`).join('');
+  $('#m-avoid').innerHTML = s.avoid.map(t => `<span class="tag">${t}</span>`).join('');
+
+  $('#m-specs').innerHTML = `
+    <div class="spec-row"><span class="k">Grit range</span><span class="v">${s.grit}</span></div>
+    <div class="spec-row"><span class="k">Tier</span><span class="v">${s.tier}</span></div>
+    <div class="spec-row"><span class="k">Stage</span><span class="v">${s.stage}</span></div>
+    <div class="spec-row"><span class="k">Preparation</span><span class="v">${s.soak}</span></div>
+    <div class="spec-row"><span class="k">Fineness</span><span class="v">${diffDots(s.fineness)}</span></div>`;
+
+  $('#m-tip').textContent = s.tip;
+
+  $('#modal-back').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  requestAnimationFrame(() => {
+    $$('#m-stats .s-bar i').forEach(bar => { bar.style.width = bar.dataset.w + '%'; });
+  });
 }
 
 /* ---------- Dojo / Quiz ---------- */
@@ -419,15 +476,23 @@ function renderGritGuide() {
   box.innerHTML = `
     <div class="grit-guide-title">Whetstone Grit Guide</div>
     <div class="grit-list">
-      ${GRIT_GUIDE.map(g => `
-        <div class="grit-item">
+      ${GRIT_GUIDE.map(g => {
+        const id = g.name.toLowerCase().replace(/\s+/g, '-');
+        return `
+        <div class="grit-item" data-id="${id}">
           <span class="grit-em">${g.emoji}</span>
           <div class="grit-info">
             <span class="grit-name">${g.name} <span class="grit-range">${g.range}</span></span>
             <span class="grit-use">${g.use}</span>
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
+  $$('.grit-item', box).forEach(item => {
+    if (state.stoneById[item.dataset.id]) {
+      item.addEventListener('click', () => openStoneModal(item.dataset.id));
+    }
+  });
 }
 
 /* ---------- Boot ---------- */
@@ -456,12 +521,16 @@ async function init() {
   state.quiz = data.quiz;
   state.byId = Object.fromEntries(data.knives.map(k => [k.id, k]));
 
+  state.stones = data.stones || [];
+  state.stoneById = Object.fromEntries(state.stones.map(s => [s.id, s]));
+
   // prune any collected ids that no longer exist
   state.collected = new Set([...state.collected].filter(id => state.byId[id]));
 
   renderFilters();
   renderGrid();
   renderCompare();
+  renderStoneCompare();
   renderDojoIntro();
   renderGritGuide();
   updateHud();

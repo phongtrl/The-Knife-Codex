@@ -650,6 +650,10 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto; }
+  /* Elements that rely on a "forwards" animation for their final state must
+     stay visible when animations are disabled. */
+  .knife-card { opacity: 1; transform: none; }
+  .toast { opacity: 1; transform: none; }
 }
 
 /* ---------- Responsive ---------- */

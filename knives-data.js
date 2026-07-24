@@ -215,7 +215,7 @@ window.KNIFE_DATA = {
       "grit": "#800–#2000",
       "tier": "Medium",
       "stage": "Main sharpening",
-      "soak": "Soak 5–10 min",
+      "soak": "Splash or soak 5–10 min",
       "purpose": "The workhorse of the set. A medium stone does the core sharpening on a dull-but-undamaged knife and sets the edge most cooks rely on. If you own only one whetstone, this is the tier to choose.",
       "bestFor": ["Main sharpening", "Dull, undamaged knives", "All-purpose use", "Your only-one stone"],
       "avoid": ["Fixing deep chips", "Mirror polishing", "Heavy reprofiling", "Thinning the blade"],

@@ -504,59 +504,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 .quiz-result h4 { font-family: var(--font-round); font-size: 1.8rem; margin: 0.6rem 0; }
 .quiz-result p { color: rgba(244,241,234,0.75); margin-bottom: 1.4rem; }
 
-/* ---------- Grit guide (Dojo reference) ---------- */
-.grit-guide {
-  position: relative;
-  z-index: 2;
-  margin-top: 1.8rem;
-  padding-top: 1.6rem;
-  border-top: 1px solid rgba(244, 241, 234, 0.14);
-}
-.grit-guide-title {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--wood);
-  margin-bottom: 1rem;
-}
-.grit-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.7rem;
-}
-.grit-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.8rem 1rem;
-  border-radius: var(--radius-sm);
-  background: rgba(244, 241, 234, 0.05);
-  border: 1px solid rgba(244, 241, 234, 0.12);
-  cursor: pointer;
-  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease);
-}
-.grit-item:hover {
-  border-color: var(--wood);
-  background: rgba(244, 241, 234, 0.1);
-  transform: translateY(-2px);
-}
-.grit-item .grit-em { font-size: 1.3rem; line-height: 1; }
-.grit-info { display: flex; flex-direction: column; gap: 0.2rem; }
-.grit-name {
-  font-family: var(--font-round);
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--paper);
-}
-.grit-name .grit-range {
-  font-family: var(--font);
-  font-weight: 400;
-  font-size: 0.78rem;
-  color: var(--wood);
-  margin-left: 0.3rem;
-}
-.grit-use { font-size: 0.78rem; color: rgba(244, 241, 234, 0.68); line-height: 1.4; }
-
 /* ---------- Modal ---------- */
 .modal-back {
   position: fixed;
@@ -718,7 +665,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .section { padding: 2rem 0; }
   .scenario-card { padding: 1.3rem; }
   .scenario-card .q-text { font-size: 1.15rem; }
-  .grit-list { grid-template-columns: 1fr; }
   .modal-hero { padding: 1.4rem 1.4rem 1.1rem; }
   .modal-body { padding: 1.3rem 1.4rem 1.6rem; }
 }
@@ -745,7 +691,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .scenario-card { padding: 1.1rem; }
   .scenario-card .q-text { font-size: 1.05rem; }
   .quiz-foot { flex-wrap: wrap; gap: 0.6rem; }
-  .grit-item { padding: 0.7rem 0.85rem; }
   .toast { max-width: 90vw; text-align: center; }
 }
 

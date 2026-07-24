@@ -12,8 +12,8 @@ const RARITY_LABEL = {
 };
 
 /* Whetstone grit tiers. In the quiz we show only the tier NAME so the numeric
-   range never gives the answer away. The full ranges live in the grit guide
-   list rendered in the Dojo, which players can consult like a reference sheet. */
+   range never gives the answer away; the full ranges live in the whetstone
+   compare table and its detail modal. */
 const GRIT_LABEL = {
   'Coarse #120–#400': 'Coarse',
   'Medium #800–#2000': 'Medium',
@@ -21,14 +21,6 @@ const GRIT_LABEL = {
   'Very Fine #6000–#8000': 'Very Fine',
   'Ultra Fine #10000+': 'Ultra Fine'
 };
-
-const GRIT_GUIDE = [
-  { name: 'Coarse',     range: '#120–#400',   use: 'Repair chips · reprofile · thin the blade', emoji: '🪨' },
-  { name: 'Medium',     range: '#800–#2000',  use: 'Main sharpening · best all-purpose stone',  emoji: '🧱' },
-  { name: 'Fine',       range: '#3000–#5000', use: 'Refine the edge · everyday polish',         emoji: '🌟' },
-  { name: 'Very Fine',  range: '#6000–#8000', use: 'Extra keenness before stropping',           emoji: '✨' },
-  { name: 'Ultra Fine', range: '#10000+',     use: 'Mirror polish · single-bevel finishing',    emoji: '💎' }
-];
 
 const RANKS = [
   { min: 0,   name: 'Apprentice',  emoji: '🌱' },
@@ -470,31 +462,6 @@ function renderDojoIntro() {
   $('#quiz-begin').addEventListener('click', startQuiz);
 }
 
-function renderGritGuide() {
-  const box = $('#grit-guide');
-  if (!box) return;
-  box.innerHTML = `
-    <div class="grit-guide-title">Whetstone Grit Guide</div>
-    <div class="grit-list">
-      ${GRIT_GUIDE.map(g => {
-        const id = g.name.toLowerCase().replace(/\s+/g, '-');
-        return `
-        <div class="grit-item" data-id="${id}">
-          <span class="grit-em">${g.emoji}</span>
-          <div class="grit-info">
-            <span class="grit-name">${g.name} <span class="grit-range">${g.range}</span></span>
-            <span class="grit-use">${g.use}</span>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>`;
-  $$('.grit-item', box).forEach(item => {
-    if (state.stoneById[item.dataset.id]) {
-      item.addEventListener('click', () => openStoneModal(item.dataset.id));
-    }
-  });
-}
-
 /* ---------- Boot ---------- */
 async function init() {
   loadProgress();
@@ -532,7 +499,6 @@ async function init() {
   renderCompare();
   renderStoneCompare();
   renderDojoIntro();
-  renderGritGuide();
   updateHud();
 
   // events

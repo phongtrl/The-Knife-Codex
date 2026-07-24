@@ -723,6 +723,118 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 .byline a:hover,
 .foot a:hover { text-decoration: underline; }
 
+/* ---------- The Greater Codex (library) ---------- */
+.library {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1.6rem;
+}
+.lib-group {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.lib-group summary {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.05rem 1.2rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background 0.25s var(--ease);
+}
+.lib-group summary::-webkit-details-marker { display: none; }
+.lib-group summary:hover { background: var(--paper-2); }
+.lib-g-em {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  width: 2.4rem; height: 2.4rem;
+  display: grid; place-items: center;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.lib-g-text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+.lib-g-title {
+  font-family: var(--font-round);
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--ink);
+}
+.lib-g-kanji { color: var(--clay); font-weight: 500; margin-left: 0.25rem; }
+.lib-g-blurb { color: var(--ink-soft); font-size: 0.85rem; line-height: 1.45; }
+.lib-g-count {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-family: var(--font-round);
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+.lib-chev {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  color: var(--ink-soft);
+  transition: transform 0.3s var(--ease);
+}
+.lib-group[open] .lib-chev { transform: rotate(180deg); }
+
+.lib-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.7rem;
+  padding: 0 1.2rem 1.2rem;
+}
+.lib-item {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.85rem 0.95rem;
+}
+.lib-item.in-codex {
+  border-color: var(--sage-soft);
+  background: linear-gradient(180deg, rgba(125, 138, 111, 0.06), var(--paper));
+}
+.lib-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.lib-name {
+  font-family: var(--font-round);
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+.lib-kanji { color: var(--clay); font-weight: 500; font-size: 0.9rem; margin-left: 0.15rem; }
+.lib-badge {
+  flex-shrink: 0;
+  font-size: 0.66rem;
+  color: var(--sage);
+  border: 1px solid var(--sage-soft);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  white-space: nowrap;
+}
+.lib-trans {
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 0.1rem 0 0.45rem;
+}
+.lib-note {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto; }

@@ -527,6 +527,167 @@ function renderDojoIntro() {
   $('#quiz-begin').addEventListener('click', startQuiz);
 }
 
+/* ---------- The Greater Codex (library) ----------
+   A reference archive of the wider Japanese knife world, grouped by the
+   job each family is built for. Rendered as native <details> accordions so
+   each family can be expanded on demand. Types already featured in the
+   Codex above are tagged so the two views connect. */
+const LIBRARY = [
+  {
+    title: 'The All-Rounders',
+    kanji: '万能',
+    emoji: '🔪',
+    blurb: 'Do-everything blades built for meat, fish and vegetables alike — the backbone of most kitchens.',
+    items: [
+      { name: 'Gyuto', kanji: '牛刀', jp: 'Cow Sword', note: 'The Western chef\'s knife reimagined in Japan. A curved belly and fine tip make it the ultimate do-everything blade.' },
+      { name: 'Santoku', kanji: '三徳', jp: 'Three Virtues', note: 'Meat, fish and vegetables in one compact, flat-profiled home knife made for clean push-cuts.' },
+      { name: 'Bunka', kanji: '文化', jp: 'Culture', note: 'A stylish all-rounder crowned with a reverse-tanto K-tip for precise scoring and detail work.' },
+      { name: 'Kiritsuke', kanji: '切付', jp: 'To Cut and Mark', note: 'The angular hybrid of slicer and vegetable knife — traditionally single-bevelled and carried as a head chef\'s badge of rank.' },
+      { name: 'Kiritsuke Gyuto', kanji: '切付牛刀', jp: 'Kiritsuke-Tipped Cow Sword', note: 'A double-bevel gyuto wearing the sword-like kiritsuke tip: everyday versatility with a dramatic point.' },
+      { name: 'Kengata', kanji: '剣型', jp: 'Sword Shape', note: 'A gyuto or santoku reshaped with a bold, pointed reverse-tanto tip for extra control at the point.' },
+      { name: 'Funayuki', kanji: '舟行', jp: 'Going Aboard', note: 'The fisherman\'s all-purpose knife: a slim, deba-like blade thin enough to handle both fish and vegetables at sea.' }
+    ]
+  },
+  {
+    title: 'The Vegetable Blades',
+    kanji: '野菜',
+    emoji: '🥬',
+    blurb: 'Straight, flat edges tuned for clean, single-motion cuts through produce.',
+    items: [
+      { name: 'Nakiri', kanji: '菜切', jp: 'Vegetable Cutter', note: 'A straight, rectangular double-bevel blade that drops clean through vegetables in a single push.' },
+      { name: 'Usuba', kanji: '薄刃', jp: 'Thin Blade', note: 'The professional\'s single-bevel vegetable knife, prized for paper-thin katsuramuki peeling.' },
+      { name: 'Kamagata Usuba', kanji: '鎌形薄刃', jp: 'Sickle-Shaped Thin Blade', note: 'The Kansai-region usuba, its pointed sickle tip adding fine detail work to the flat edge.' },
+      { name: 'Mukimono', kanji: '剥き物', jp: 'Decorative Peeling', note: 'A slender knife made for carving elaborate vegetable garnishes and edible decorations.' },
+      { name: 'Kawamuki', kanji: '皮剥き', jp: 'Peeling', note: 'A small, nimble blade dedicated to peeling the skin from fruit and vegetables.' },
+      { name: 'Negikiri', kanji: '葱切', jp: 'Scallion Cutter', note: 'A specialist for shaving green onions and leeks into fine, feathery strands.' }
+    ]
+  },
+  {
+    title: 'Small & Utility',
+    kanji: '小型',
+    emoji: '🍓',
+    blurb: 'Nimble, short blades for in-hand work and jobs too fine for a full-size knife.',
+    items: [
+      { name: 'Petty', kanji: 'ペティ', jp: 'Petite', note: 'The nimble sidekick for peeling, trimming and detail too fine for a full-size blade.' },
+      { name: 'Ko-Bunka', kanji: '小文化', jp: 'Small Bunka', note: 'A pocket-sized bunka: the K-tip precision of its big sibling in a petty-length blade.' },
+      { name: 'Ko-Santoku', kanji: '小三徳', jp: 'Small Santoku', note: 'A compact three-virtue knife, ideal for smaller hands and lighter prep.' },
+      { name: 'Ko-Gyuto', kanji: '小牛刀', jp: 'Small Cow Sword', note: 'A short chef\'s knife that bridges the gap between a petty and a full gyuto.' }
+    ]
+  },
+  {
+    title: 'Fish Butchery · the Deba Family',
+    kanji: '出刃',
+    emoji: '🐟',
+    blurb: 'Thick, heavy single-bevel blades that fillet fish and chop through heads and small bones.',
+    items: [
+      { name: 'Deba', kanji: '出刃', jp: 'Pointed Carver', note: 'A thick, heavy single-bevel blade built to fillet fish and chop through heads and small bones.' },
+      { name: 'Hon-Deba', kanji: '本出刃', jp: 'True Deba', note: 'The full-weight, standard deba — the benchmark of the family.' },
+      { name: 'Ai-Deba', kanji: '相出刃', jp: 'Intermediate Deba', note: 'A lighter, thinner deba that trades brute weight for nimbler filleting.' },
+      { name: 'Ko-Deba', kanji: '小出刃', jp: 'Small Deba', note: 'A pint-sized deba for breaking down small fish with control.' },
+      { name: 'Mioroshi Deba', kanji: '身卸出刃', jp: 'Filleting Deba', note: 'Longer and slimmer than a hon-deba, it both butchers and slices in one blade.' },
+      { name: 'Funayuki Deba', kanji: '舟行出刃', jp: 'Boat Deba', note: 'A deba-shaped funayuki: light enough for fine work, sturdy enough for small bones.' },
+      { name: 'Ajikiri', kanji: '鯵切', jp: 'Horse-Mackerel Cutter', note: 'A tiny deba sized precisely for aji and other small fish.' }
+    ]
+  },
+  {
+    title: 'Sashimi Slicers · the Yanagiba Family',
+    kanji: '刺身',
+    emoji: '🍣',
+    blurb: 'Long, single-bevel blades that render raw fish in one flawless pull-stroke.',
+    items: [
+      { name: 'Yanagiba', kanji: '柳刃', jp: 'Willow Blade', note: 'The long, single-bevel sashimi slicer that renders raw fish in one flawless pull-stroke.' },
+      { name: 'Takohiki', kanji: '蛸引', jp: 'Octopus Puller', note: 'The Kanto-style slicer with a squared-off tip, favoured for octopus and sashimi.' },
+      { name: 'Fuguhiki', kanji: '河豚引', jp: 'Pufferfish Puller', note: 'A thinner, more flexible yanagiba for slicing fugu translucently thin.' },
+      { name: 'Sakimaru Takohiki', kanji: '先丸蛸引', jp: 'Round-Tipped Octopus Puller', note: 'A takohiki finished with an elegant rounded sword tip; a premium sashimi blade.' },
+      { name: 'Kensaki Yanagiba', kanji: '剣先柳刃', jp: 'Sword-Tip Willow Blade', note: 'The Kansai yanagiba capped with a kiritsuke-style pointed tip.' }
+    ]
+  },
+  {
+    title: 'Great Fish & Regional Specialists',
+    kanji: '専門',
+    emoji: '🐡',
+    blurb: 'Rare, often enormous blades built for a single fish, technique or region.',
+    items: [
+      { name: 'Magurokiri', kanji: '鮪切', jp: 'Tuna Cutter', note: 'A long blade for portioning large cuts of tuna.' },
+      { name: 'Maguro Bocho', kanji: '鮪包丁', jp: 'Tuna Knife', note: 'An enormous, sometimes two-metre blade used to break down whole tuna at market.' },
+      { name: 'Oroshi Hocho', kanji: '卸包丁', jp: 'Filleting Knife', note: 'A giant single-stroke slicer for filleting very large fish.' },
+      { name: 'Hancho Hocho', kanji: '半丁包丁', jp: 'Half-Length Knife', note: 'A long tuna knife, shorter than the oroshi, for sectioning big fish.' },
+      { name: 'Unagisaki', kanji: '鰻裂き', jp: 'Eel Splitter', note: 'A specialist for splitting and boning slippery eel — with a distinct style for each region.' },
+      { name: 'Edo Unagisaki', kanji: '江戸鰻裂き', jp: 'Tokyo Eel Splitter', note: 'The Tokyo style: a squared, dagger-like point.' },
+      { name: 'Osaka Unagisaki', kanji: '大阪鰻裂き', jp: 'Osaka Eel Splitter', note: 'The Kansai style, with a sickle-shaped blade.' },
+      { name: 'Kyoto Unagisaki', kanji: '京都鰻裂き', jp: 'Kyoto Eel Splitter', note: 'The Kyoto style, slender with a fine point.' },
+      { name: 'Nagoya Unagisaki', kanji: '名古屋鰻裂き', jp: 'Nagoya Eel Splitter', note: 'The Nagoya style, compact and broad.' },
+      { name: 'Hamo-kiri', kanji: '鱧切', jp: 'Pike-Conger Cutter', note: 'A heavy, square blade for honekiri — scoring the many fine bones of pike conger.' },
+      { name: 'Katsuo Hocho', kanji: '鰹包丁', jp: 'Bonito Knife', note: 'Shaped for cleanly slicing skipjack tuna and bonito.' },
+      { name: 'Kujira Hocho', kanji: '鯨包丁', jp: 'Whale Knife', note: 'A historic long blade once used to portion whale meat.' },
+      { name: 'Sakekiri', kanji: '鮭切', jp: 'Salmon Cutter', note: 'A long knife tuned for slicing whole salmon.' },
+      { name: 'Kaniwari', kanji: '蟹割', jp: 'Crab Splitter', note: 'A sturdy tool for cracking and splitting crab shells.' }
+    ]
+  },
+  {
+    title: 'Meat, Poultry & Boning',
+    kanji: '精肉',
+    emoji: '🍖',
+    blurb: 'Stiff boning knives and long carving blades for working with meat.',
+    items: [
+      { name: 'Honesuki', kanji: '骨スキ', jp: 'Bone Remover', note: 'A stiff, triangular knife for boning poultry around the joints.' },
+      { name: 'Garasuki', kanji: 'ガラスキ', jp: 'Poultry Boner', note: 'A larger, heavier honesuki for breaking down whole birds.' },
+      { name: 'Sujihiki', kanji: '筋引', jp: 'Sinew Slicer', note: 'The double-bevel carving knife for long, clean strokes through cooked and raw meat.' },
+      { name: 'Chukabocho', kanji: '中華包丁', jp: 'Chinese Knife', note: 'The Japanese take on the Chinese cleaver, light enough for endless vegetable work.' },
+      { name: 'Reito Hocho', kanji: '冷凍包丁', jp: 'Frozen Knife', note: 'A tough, often serrated blade made to saw through frozen foods.' }
+    ]
+  },
+  {
+    title: 'Noodles, Dough & Sweets',
+    kanji: '製麺・菓子',
+    emoji: '🍜',
+    blurb: 'Tall, straight blades for slicing rolled dough, noodles and confections.',
+    items: [
+      { name: 'Menkiri', kanji: '麺切', jp: 'Noodle Cutter', note: 'A tall, straight blade that slices rolled dough into even noodles.' },
+      { name: 'Sobakiri', kanji: '蕎麦切', jp: 'Soba Cutter', note: 'A heavy rectangular knife for cutting buckwheat soba by hand.' },
+      { name: 'Udonkiri', kanji: '饂飩切', jp: 'Udon Cutter', note: 'A close cousin of the sobakiri, sized for thick udon.' },
+      { name: 'Mochikiri', kanji: '餅切', jp: 'Mochi Cutter', note: 'Built to cut dense, sticky rice cakes cleanly.' },
+      { name: 'Pankiri', kanji: 'パン切', jp: 'Bread Knife', note: 'The Japanese serrated bread knife.' },
+      { name: 'Kashikiri', kanji: '菓子切', jp: 'Confection Cutter', note: 'A fine blade for slicing delicate wagashi and sweets.' }
+    ]
+  }
+];
+
+function renderLibrary() {
+  const box = $('#library');
+  if (!box) return;
+  const codexNames = new Set(state.knives.map(k => k.name.toLowerCase()));
+
+  box.innerHTML = LIBRARY.map(g => {
+    const items = g.items.map(it => {
+      const inCodex = codexNames.has(it.name.toLowerCase());
+      return `
+        <div class="lib-item${inCodex ? ' in-codex' : ''}">
+          <div class="lib-item-head">
+            <span class="lib-name">${it.name} <span class="lib-kanji">${it.kanji}</span></span>
+            ${inCodex ? '<span class="lib-badge">★ In the Codex</span>' : ''}
+          </div>
+          <div class="lib-trans">${it.jp}</div>
+          <p class="lib-note">${it.note}</p>
+        </div>`;
+    }).join('');
+
+    return `
+      <details class="lib-group">
+        <summary>
+          <span class="lib-g-em">${g.emoji}</span>
+          <span class="lib-g-text">
+            <span class="lib-g-title">${g.title} <span class="lib-g-kanji">${g.kanji}</span></span>
+            <span class="lib-g-blurb">${g.blurb}</span>
+          </span>
+          <span class="lib-g-count">${g.items.length}</span>
+          <span class="lib-chev" aria-hidden="true">⌄</span>
+        </summary>
+        <div class="lib-items">${items}</div>
+      </details>`;
+  }).join('');
+}
+
 /* ---------- Boot ---------- */
 async function init() {
   loadProgress();
@@ -561,6 +722,7 @@ async function init() {
 
   renderFilters();
   renderGrid();
+  renderLibrary();
   renderCompare();
   renderStoneCompare();
   renderDojoIntro();

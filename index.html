@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Japanese Knife — The Blade Codex</title>
-  <meta name="description" content="A calm, gamified guide to Japanese kitchen knives. Discover, compare, and master each blade." />
+  <title>Your Japanese Knife — The Knife Codex</title>
+  <meta name="description" content="A calm, gamified guide to Japanese kitchen knives. Discover, compare, and master each knife." />
   <link rel="stylesheet" href="styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,7 +18,7 @@
         <span class="mark">刃</span>
         <div>
           <h1>Your Japanese Knife</h1>
-          <div class="sub">The Blade Codex</div>
+          <div class="sub">The Knife Codex</div>
         </div>
       </div>
       <div class="hud">
@@ -33,17 +33,17 @@
         <div class="xp-track" title="Progress to next rank">
           <div class="xp-fill" id="hud-xp-fill"></div>
         </div>
-        <span class="rank-badge" id="hud-rank">Apprentice</span>
+        <button class="rank-badge" id="hud-rank" title="View all ranks">Apprentice</button>
       </div>
     </div>
   </header>
 
   <!-- ===== Hero ===== -->
   <section class="hero wrap">
-    <span class="eyebrow">A gamified blade codex</span>
+    <span class="eyebrow">A gamified knife codex</span>
     <h2>Meet the knives of the<br /><span class="accent">Japanese kitchen</span>.</h2>
     <p>
-      Ten blades, each with a purpose. Explore the codex, learn what every knife
+      Ten knives, each with a purpose. Explore the codex, learn what every knife
       is made for, then test your instincts in the Dojo. Collect them all.
     </p>
     <div class="cta-row">
@@ -57,9 +57,9 @@
     <div class="section-head">
       <div>
         <div class="kicker">Chapter 01</div>
-        <h3>The Blade Codex</h3>
+        <h3>The Knife Codex</h3>
       </div>
-      <p>Tap any card to inspect a blade. View it once to add it to your collection.</p>
+      <p>Tap any card to inspect a knife. View it once to add it to your collection.</p>
     </div>
 
     <div class="filters" id="filters"></div>
@@ -118,7 +118,7 @@
     <div class="dojo">
       <div class="kicker">Chapter 03</div>
       <h3>The Dojo</h3>
-      <p class="dojo-sub">Match blades to tasks, whetstone grits to jobs, and master knife care. Earn XP and climb the ranks.</p>
+      <p class="dojo-sub">Match knives to tasks, whetstone grits to jobs, and master knife care. Earn XP and climb the ranks.</p>
 
       <div class="quiz-stage" id="quiz-stage">
         <!-- injected by JS -->
@@ -145,7 +145,7 @@
         <p class="lead" id="m-purpose"></p>
 
         <div class="detail-block">
-          <div class="d-title">Blade Stats</div>
+          <div class="d-title">Knife Stats</div>
           <div class="stat-grid" id="m-stats"></div>
         </div>
 
@@ -169,6 +169,18 @@
           <span id="m-tip"></span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== Ranks ===== -->
+  <div class="modal-back ranks-back" id="ranks-back">
+    <div class="ranks-modal" role="dialog" aria-modal="true" aria-label="Ranks">
+      <div class="ranks-head">
+        <h3>Ranks</h3>
+        <button class="close" id="ranks-close" aria-label="Close">✕</button>
+      </div>
+      <div class="ranks-next" id="ranks-next"></div>
+      <div class="ranks-list" id="ranks-list"></div>
     </div>
   </div>
 

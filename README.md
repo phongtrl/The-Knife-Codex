@@ -1,13 +1,13 @@
 # The Knife Codex
 
 A calm, gamified guide to Japanese kitchen knives. Discover, compare, and master
-each blade — then test your instincts in the Dojo and collect them all.
+each knife — then test your instincts in the Dojo and collect them all.
 
 **Live site:** https://phongtrl.github.io/The-Knife-Codex/
 
 ## Features
 
-- **The Blade Codex** — inspect each knife; view one to add it to your collection.
+- **The Knife Codex** — inspect each knife; view one to add it to your collection.
 - **Side-by-Side** — compare length, edge, best use, and difficulty at a glance.
 - **The Dojo** — a quiz that awards XP and ranks as you learn.
 - Progress (collection + XP) is saved locally in your browser via `localStorage`.

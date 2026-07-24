@@ -28,7 +28,7 @@ const RANKS = [
   { min: 280, name: 'Sous Chef',   emoji: '🔪' },
   { min: 480, name: 'Head Chef',   emoji: '👨‍🍳' },
   { min: 720, name: 'Itamae',      emoji: '🍣' },
-  { min: 1000, name: 'Blade Master', emoji: '🏯' }
+  { min: 1000, name: 'Knife Master', emoji: '🏯' }
 ];
 
 const STORE_KEY = 'yjk-progress-v1';
@@ -46,6 +46,7 @@ const state = {
   filter: 'all',
   collected: new Set(),
   xp: 0,
+  seenQuiz: new Set(),   // scenarios already shown in the Dojo
   quizIndex: 0,
   quizScore: 0,
   quizActive: false
@@ -59,13 +60,15 @@ function loadProgress() {
     const data = JSON.parse(raw);
     state.xp = data.xp || 0;
     state.collected = new Set(data.collected || []);
+    state.seenQuiz = new Set(data.seenQuiz || []);
   } catch (e) { /* ignore corrupt store */ }
 }
 function saveProgress() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       xp: state.xp,
-      collected: [...state.collected]
+      collected: [...state.collected],
+      seenQuiz: [...state.seenQuiz]
     }));
   } catch (e) { /* storage may be unavailable */ }
 }
@@ -116,6 +119,19 @@ function optionMeta(opt) {
   return { label: GRIT_LABEL[opt] || opt, emoji: keywordEmoji(opt) };
 }
 
+/* A question may accept several answers (e.g. multiple grits that all work).
+   Falls back to the single `answer` when no `answers` list is provided. */
+function acceptedAnswers(q) {
+  return q.answers && q.answers.length ? q.answers : [q.answer];
+}
+
+/* Join labels into a readable phrase: "A, B, and C" / "A or B". */
+function formatList(items, conj = 'and') {
+  if (items.length <= 1) return items[0] || '';
+  if (items.length === 2) return `${items[0]} ${conj} ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, ${conj} ${items[items.length - 1]}`;
+}
+
 function rankFor(xp) {
   let r = RANKS[0];
   for (const rank of RANKS) if (xp >= rank.min) r = rank;
@@ -164,12 +180,46 @@ function updateHud() {
   $('#hud-xp-fill').style.width = pct + '%';
 }
 
+/* ---------- Ranks modal ---------- */
+function renderRanks() {
+  const current = rankFor(state.xp);
+  const nxt = nextRank(state.xp);
+
+  $('#ranks-next').innerHTML = nxt
+    ? `Next rank is <b>${nxt.emoji} ${nxt.name}</b> — <b>${nxt.min - state.xp}</b> XP to go.`
+    : `You've reached the top rank — <b>${current.emoji} ${current.name}</b>. 🎉`;
+
+  $('#ranks-list').innerHTML = RANKS.map(r => {
+    const achieved = state.xp >= r.min;
+    const isCurrent = r.name === current.name;
+    const cls = ['rank-row', achieved ? 'achieved' : '', isCurrent ? 'current' : ''].join(' ').trim();
+    return `
+      <div class="${cls}">
+        <span class="rank-em">${r.emoji}</span>
+        <span class="rank-name">${r.name}</span>
+        <span class="rank-min">${r.min} XP</span>
+        ${isCurrent ? '<span class="rank-tag">You</span>' : (achieved ? '<span class="rank-check">✓</span>' : '')}
+      </div>`;
+  }).join('');
+}
+
+function openRanks() {
+  renderRanks();
+  $('#ranks-back').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeRanks() {
+  $('#ranks-back').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
 /* ---------- Codex ---------- */
 function renderFilters() {
   const rarities = ['all', ...new Set(state.knives.map(k => k.rarity))];
   const box = $('#filters');
   box.innerHTML = rarities.map(r => {
-    const label = r === 'all' ? 'All Blades' : RARITY_LABEL[r] || r;
+    const label = r === 'all' ? 'All Knives' : RARITY_LABEL[r] || r;
     return `<button class="chip ${r === state.filter ? 'active' : ''}" data-filter="${r}">${label}</button>`;
   }).join('');
   $$('.chip', box).forEach(chip => {
@@ -266,7 +316,7 @@ function openModal(id) {
   $('#m-avoid').innerHTML = k.avoid.map(t => `<span class="tag">${t}</span>`).join('');
 
   $('#m-specs').innerHTML = `
-    <div class="spec-row"><span class="k">Blade length</span><span class="v">${k.bladeLength}</span></div>
+    <div class="spec-row"><span class="k">Knife length</span><span class="v">${k.bladeLength}</span></div>
     <div class="spec-row"><span class="k">Edge type</span><span class="v">${k.edge}</span></div>
     <div class="spec-row"><span class="k">Profile</span><span class="v">${k.profile}</span></div>
     <div class="spec-row"><span class="k">Difficulty</span><span class="v">${diffDots(k.difficulty)}</span></div>`;
@@ -288,7 +338,7 @@ function openModal(id) {
     addXp(20, `Discovered the ${k.name}`);
     renderGrid();
     if (state.collected.size === state.knives.length) {
-      setTimeout(() => toast('🏯 Codex complete — every blade collected!'), 400);
+      setTimeout(() => toast('🏯 Codex complete — every knife collected!'), 400);
     }
   }
 }
@@ -338,9 +388,17 @@ function openStoneModal(id) {
 
 /* ---------- Dojo / Quiz ---------- */
 function startQuiz() {
-  // Draw a random subset and shuffle each question's options.
-  const pool = shuffle(state.quiz).slice(0, Math.min(QUIZ_LENGTH, state.quiz.length));
+  // Only draw questions not seen in previous training rounds.
+  let unseen = state.quiz.filter(q => !state.seenQuiz.has(q.scenario));
+  // Once every question has been seen, reset the pool so training can continue.
+  if (unseen.length === 0) {
+    state.seenQuiz.clear();
+    unseen = state.quiz.slice();
+  }
+  const pool = shuffle(unseen).slice(0, Math.min(QUIZ_LENGTH, unseen.length));
   state.round = pool.map(q => ({ ...q, options: shuffle(q.options) }));
+  pool.forEach(q => state.seenQuiz.add(q.scenario));
+  saveProgress();
 
   state.quizIndex = 0;
   state.quizScore = 0;
@@ -363,7 +421,7 @@ function renderQuestion() {
 
   const options = q.options.map((opt, i) => {
     const meta = optionMeta(opt);
-    const isCorrect = opt === q.answer;
+    const isCorrect = acceptedAnswers(q).includes(opt);
     return `<button class="answer-btn" data-idx="${i}" data-correct="${isCorrect}">
       <span class="em">${meta.emoji}</span><span>${meta.label}</span>
     </button>`;
@@ -390,24 +448,31 @@ function renderQuestion() {
 
 function answerQuestion(chosenBtn) {
   const q = state.round[state.quizIndex];
+  const accepted = acceptedAnswers(q);
   const buttons = $$('#answers .answer-btn');
   buttons.forEach(b => { b.disabled = true; });
 
-  const correctLabel = optionMeta(q.answer).label;
   const isCorrect = chosenBtn.dataset.correct === 'true';
   const feedback = $('#quiz-feedback');
 
+  // Reveal every acceptable answer in green.
+  buttons.forEach(b => { if (b.dataset.correct === 'true') b.classList.add('correct'); });
+
+  const correctLabels = accepted.map(a => optionMeta(a).label);
+
   if (isCorrect) {
-    chosenBtn.classList.add('correct');
     state.quizScore++;
     feedback.className = 'quiz-feedback';
-    feedback.textContent = `✓ Correct — ${correctLabel} is the right answer.`;
+    feedback.textContent = accepted.length > 1
+      ? `✓ Correct — ${formatList(correctLabels, 'and')} all work here.`
+      : `✓ Correct — ${correctLabels[0]} is the right answer.`;
     addXp(15, 'Correct answer');
   } else {
     chosenBtn.classList.add('wrong');
-    buttons.find(b => b.dataset.correct === 'true')?.classList.add('correct');
     feedback.className = 'quiz-feedback miss';
-    feedback.textContent = `✗ The right answer is ${correctLabel}.`;
+    feedback.textContent = accepted.length > 1
+      ? `✗ Any of ${formatList(correctLabels, 'or')} works here.`
+      : `✗ The right answer is ${correctLabels[0]}.`;
   }
 
   const foot = $('.quiz-foot');
@@ -434,7 +499,7 @@ function finishQuiz() {
   const pct = total ? score / total : 0;
 
   let title, emoji, note;
-  if (pct === 1) { title = 'Flawless — Itamae!'; emoji = '🏯'; note = 'A perfect run across blades and stones.'; }
+  if (pct === 1) { title = 'Flawless — Itamae!'; emoji = '🏯'; note = 'A perfect run across knives and stones.'; }
   else if (pct >= 0.75) { title = 'Sharp instincts.'; emoji = '🍣'; note = 'A confident grasp of the codex.'; }
   else if (pct >= 0.5) { title = 'Coming along.'; emoji = '🔪'; note = 'Solid basics — a little more practice.'; }
   else { title = 'Keep training.'; emoji = '🌱'; note = 'Revisit the codex and try again.'; }
@@ -456,7 +521,7 @@ function renderDojoIntro() {
     <div class="quiz-result">
       <div class="rank-emoji">🥢</div>
       <h4>Ready to test your eye?</h4>
-      <p>${QUIZ_LENGTH} random tasks each run — blades, whetstone grits, strops, and knife care. Answers earn XP and rank you up.</p>
+      <p>${QUIZ_LENGTH} random tasks each run — knives, whetstone grits, strops, and knife care. Answers earn XP and rank you up.</p>
       <button class="btn" id="quiz-begin">Begin Training</button>
     </div>`;
   $('#quiz-begin').addEventListener('click', startQuiz);
@@ -506,8 +571,13 @@ async function init() {
   $('#modal-back').addEventListener('click', e => {
     if (e.target === $('#modal-back')) closeModal();
   });
+  $('#hud-rank').addEventListener('click', openRanks);
+  $('#ranks-close').addEventListener('click', closeRanks);
+  $('#ranks-back').addEventListener('click', e => {
+    if (e.target === $('#ranks-back')) closeRanks();
+  });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') { closeModal(); closeRanks(); }
   });
   $('#cta-explore').addEventListener('click', () =>
     $('#codex').scrollIntoView({ behavior: 'smooth' }));

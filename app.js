@@ -45,6 +45,8 @@ const state = {
   stoneById: {},
   filter: 'all',
   collected: new Set(),
+  readStones: new Set(),   // whetstone tiers whose detail was opened
+  readLibrary: new Set(),  // Greater Codex families that were expanded
   xp: 0,
   seenQuiz: new Set(),   // scenarios already shown in the Dojo
   quizIndex: 0,
@@ -60,6 +62,8 @@ function loadProgress() {
     const data = JSON.parse(raw);
     state.xp = data.xp || 0;
     state.collected = new Set(data.collected || []);
+    state.readStones = new Set(data.readStones || []);
+    state.readLibrary = new Set(data.readLibrary || []);
     state.seenQuiz = new Set(data.seenQuiz || []);
   } catch (e) { /* ignore corrupt store */ }
 }
@@ -68,6 +72,8 @@ function saveProgress() {
     localStorage.setItem(STORE_KEY, JSON.stringify({
       xp: state.xp,
       collected: [...state.collected],
+      readStones: [...state.readStones],
+      readLibrary: [...state.readLibrary],
       seenQuiz: [...state.seenQuiz]
     }));
   } catch (e) { /* storage may be unavailable */ }
@@ -335,7 +341,7 @@ function openModal(id) {
   if (!state.collected.has(id)) {
     state.collected.add(id);
     saveProgress();
-    addXp(20, `Discovered the ${k.name}`);
+    addXp(15, `Discovered the ${k.name}`);
     renderGrid();
     if (state.collected.size === state.knives.length) {
       setTimeout(() => toast('🏯 Codex complete — every knife collected!'), 400);
@@ -384,6 +390,13 @@ function openStoneModal(id) {
   requestAnimationFrame(() => {
     $$('#m-stats .s-bar i').forEach(bar => { bar.style.width = bar.dataset.w + '%'; });
   });
+
+  // first-read reward for studying a whetstone tier
+  if (!state.readStones.has(id)) {
+    state.readStones.add(id);
+    saveProgress();
+    addXp(10, `Studied the ${s.name} stone`);
+  }
 }
 
 /* ---------- Dojo / Quiz ---------- */
@@ -466,7 +479,7 @@ function answerQuestion(chosenBtn) {
     feedback.textContent = accepted.length > 1
       ? `✓ Correct — ${formatList(correctLabels, 'and')} all work here.`
       : `✓ Correct — ${correctLabels[0]} is the right answer.`;
-    addXp(15, 'Correct answer');
+    addXp(9, 'Correct answer');
   } else {
     chosenBtn.classList.add('wrong');
     feedback.className = 'quiz-feedback miss';
@@ -504,7 +517,7 @@ function finishQuiz() {
   else if (pct >= 0.5) { title = 'Coming along.'; emoji = '🔪'; note = 'Solid basics — a little more practice.'; }
   else { title = 'Keep training.'; emoji = '🌱'; note = 'Revisit the codex and try again.'; }
 
-  addXp(score * 5 + (pct === 1 ? 25 : 0), 'Dojo complete');
+  if (pct === 1) addXp(12, 'Perfect round');
 
   $('#quiz-stage').innerHTML = `
     <div class="quiz-result">
@@ -673,7 +686,7 @@ function renderLibrary() {
     }).join('');
 
     return `
-      <details class="lib-group">
+      <details class="lib-group" data-lib="${g.title}">
         <summary>
           <span class="lib-g-em">${g.emoji}</span>
           <span class="lib-g-text">
@@ -686,6 +699,17 @@ function renderLibrary() {
         <div class="lib-items">${items}</div>
       </details>`;
   }).join('');
+
+  $$('.lib-group', box).forEach(group => {
+    group.addEventListener('toggle', () => {
+      if (!group.open) return;
+      const key = group.dataset.lib;
+      if (state.readLibrary.has(key)) return;
+      state.readLibrary.add(key);
+      saveProgress();
+      addXp(12, 'Read the Greater Codex');
+    });
+  });
 }
 
 /* ---------- Boot ---------- */

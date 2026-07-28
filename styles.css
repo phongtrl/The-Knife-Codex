@@ -796,10 +796,33 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.85rem 0.95rem;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.lib-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--sage-soft);
+  box-shadow: 0 6px 16px rgba(43, 40, 35, 0.08);
+}
+.lib-item:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
 }
 .lib-item.in-codex {
   border-color: var(--sage-soft);
   background: linear-gradient(180deg, rgba(125, 138, 111, 0.06), var(--paper));
+}
+.lib-item.found {
+  border-color: var(--sage-soft);
+  background: linear-gradient(180deg, rgba(125, 138, 111, 0.1), var(--paper));
+}
+.lib-badge.lib-found {
+  color: #fff;
+  background: var(--sage);
+  border-color: var(--sage);
 }
 .lib-item-head {
   display: flex;
@@ -1284,8 +1307,13 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 .anatomy-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .an-handle { fill: var(--wood); }
 .an-rivet { fill: rgba(43, 40, 35, 0.35); }
-.an-blade { fill: #dfe0e2; stroke: var(--line); stroke-width: 1; }
-.an-shinogi { stroke: #c3c4c6; stroke-width: 1; fill: none; }
+.an-facet { stroke: rgba(43, 40, 35, 0.16); stroke-width: 1; fill: none; }
+.an-ferrule { fill: #3c342c; }
+.an-blade { fill: #e4e5e7; stroke: var(--line); stroke-width: 1; }
+.an-hagane { fill: #cfd2d6; stroke: none; }
+.an-shinogi { stroke: #b7babe; stroke-width: 1.2; fill: none; }
+.an-clad { stroke: #c9ccd0; stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+.an-mei { stroke: rgba(43, 40, 35, 0.4); stroke-width: 1.2; fill: none; }
 .an-dot { position: absolute; transform: translate(-50%, -50%); width: 26px; height: 26px; border-radius: 50%; border: none; background: none; cursor: pointer; padding: 0; }
 .an-dot span { display: block; width: 12px; height: 12px; margin: 7px; border-radius: 50%; background: var(--clay); box-shadow: 0 0 0 4px rgba(180, 103, 76, 0.2); transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease); }
 .an-dot:hover span, .an-dot.active span { transform: scale(1.25); box-shadow: 0 0 0 6px rgba(180, 103, 76, 0.28); }

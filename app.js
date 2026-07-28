@@ -70,6 +70,9 @@ const state = {
   readStones: new Set(),   // whetstone tiers whose detail was opened
   readLibrary: new Set(),  // Greater Codex families that were expanded
   steelsRead: new Set(),   // steels whose detail was opened
+  libDiscovered: new Set(),// Greater Codex knives discovered (non-featured ids)
+  libById: {},             // id -> Greater Codex knife entry
+  recent: null,            // { emoji, name } of the most recently discovered knife
   roll: {},                // My Knife Roll: id -> { owned, length, steel, ... }
   achievements: new Set(), // unlocked achievement ids
   xp: 0,
@@ -109,6 +112,8 @@ function loadProgress() {
     state.readStones = new Set(data.readStones || []);
     state.readLibrary = new Set(data.readLibrary || []);
     state.steelsRead = new Set(data.steelsRead || []);
+    state.libDiscovered = new Set(data.libDiscovered || []);
+    state.recent = data.recent || null;
     state.roll = data.roll || {};
     state.achievements = new Set(data.achievements || []);
     state.seenQuiz = new Set(data.seenQuiz || []);
@@ -125,6 +130,8 @@ function saveProgress() {
       readStones: [...state.readStones],
       readLibrary: [...state.readLibrary],
       steelsRead: [...state.steelsRead],
+      libDiscovered: [...state.libDiscovered],
+      recent: state.recent,
       roll: state.roll,
       achievements: [...state.achievements],
       seenQuiz: [...state.seenQuiz],
@@ -260,8 +267,8 @@ function updateHud() {
   const rank = rankFor(state.xp);
   const nxt = nextRank(state.xp);
   $('#hud-xp').textContent = state.xp;
-  $('#hud-collected').textContent = state.collected.size;
-  $('#hud-total').textContent = state.knives.length;
+  $('#hud-collected').textContent = discoveredKnives();
+  $('#hud-total').textContent = totalKnives();
   $('#hud-rank').textContent = `${rank.emoji} ${rank.name}`;
 
   let pct = 100;
@@ -286,8 +293,8 @@ function renderProfile() {
     progressLabel = `${nxt.min - state.xp} XP to ${nxt.emoji} ${nxt.name}`;
   }
 
-  const total = state.knives.length;
-  const found = state.collected.size;
+  const total = totalKnives();
+  const found = discoveredKnives();
   const steelTotal = state.steels.length;
   const steelFound = state.steelsRead.size;
   const d = state.dojo;
@@ -461,6 +468,12 @@ function setKnifeOnly(visible) {
   $$('.knife-only').forEach(el => { el.style.display = visible ? '' : 'none'; });
 }
 
+/* Reveal every shared detail block. A Greater Codex (library) knife hides most
+   of them; call this first in every open* function to restore a clean slate. */
+function showAllBlocks() {
+  $$('#modal-back .modal-body > .detail-block').forEach(b => { b.style.display = ''; });
+}
+
 /* A chip linking to a related knife. Undiscovered specialists stay hidden as
    a locked chip until inspected, but can still be tapped to reveal them. */
 function similarChip(id) {
@@ -481,6 +494,7 @@ function openModal(id) {
 
   const isNew = !state.collected.has(id);
 
+  showAllBlocks();
   setKnifeOnly(true);
   $('#m-best-title').textContent = 'Best Uses';
   $('#m-specs-title').textContent = 'Specs';
@@ -545,14 +559,14 @@ function openModal(id) {
   // first discovery reward
   if (isNew) {
     state.collected.add(id);
+    noteDiscovery(k.emoji, k.name);
     saveProgress();
     addXp(15, `Discovered the ${k.name}`);
     renderGrid();
+    renderLibrary();
     checkAchievements();
     renderDashboard();
-    if (state.collected.size === state.knives.length) {
-      setTimeout(() => toast('🏯 Codex complete — every knife collected!'), 400);
-    }
+    maybeCollectionComplete();
   }
 }
 
@@ -567,6 +581,7 @@ function openStoneModal(id) {
   const s = state.stoneById[id];
   if (!s) return;
 
+  showAllBlocks();
   setKnifeOnly(false);
   $('#m-discovery').style.display = 'none';
   $('#modal-back .modal').classList.remove('discovered');
@@ -1056,6 +1071,50 @@ const LIBRARY = [
   }
 ];
 
+/* Build an index of every Greater Codex knife that isn't already one of the
+   ten featured knives, giving each a stable id so it can be discovered. */
+function buildLibraryIndex() {
+  const codexByName = new Map(state.knives.map(k => [k.name.toLowerCase(), k.id]));
+  state.libById = {};
+  LIBRARY.forEach(g => {
+    g.items.forEach(it => {
+      const featuredId = codexByName.get(it.name.toLowerCase()) || null;
+      it._featuredId = featuredId;
+      it._family = g.title;
+      it._emoji = g.emoji;
+      if (featuredId) {
+        it._id = featuredId;
+      } else {
+        const slug = 'lib-' + it.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        it._id = slug;
+        state.libById[slug] = it;
+      }
+    });
+  });
+}
+
+/* Total number of discoverable knives: the ten featured + every other blade
+   in the Greater Codex. */
+function totalKnives() {
+  return state.knives.length + Object.keys(state.libById).length;
+}
+/* How many of those the user has discovered so far. */
+function discoveredKnives() {
+  return state.collected.size + state.libDiscovered.size;
+}
+
+/* Record the most recently discovered knife for the Home dashboard. */
+function noteDiscovery(emoji, name) {
+  state.recent = { emoji, name };
+}
+
+/* Fire the codex-complete toast once every knife has been discovered. */
+function maybeCollectionComplete() {
+  if (discoveredKnives() === totalKnives()) {
+    setTimeout(() => toast('🏯 Codex complete — every knife discovered!'), 400);
+  }
+}
+
 function renderLibrary() {
   const box = $('#library');
   if (!box) return;
@@ -1080,15 +1139,19 @@ function renderLibrary() {
   box.innerHTML = groups.map(({ g, items }) => {
     const itemsHtml = items.map(it => {
       const inCodex = codexNames.has(it.name.toLowerCase());
+      const found = it._featuredId
+        ? state.collected.has(it._featuredId)
+        : state.libDiscovered.has(it._id);
       return `
-        <div class="lib-item${inCodex ? ' in-codex' : ''}">
+        <button type="button" class="lib-item${inCodex ? ' in-codex' : ''}${found ? ' found' : ''}" data-lib-id="${it._id}" data-featured="${it._featuredId ? '1' : ''}">
           <div class="lib-item-head">
             <span class="lib-name">${it.name} <span class="lib-kanji">${it.kanji}</span></span>
-            ${inCodex ? '<span class="lib-badge">★ In the Codex</span>' : ''}
+            ${inCodex ? '<span class="lib-badge">★ In the Codex</span>'
+              : found ? '<span class="lib-badge lib-found">✓ Discovered</span>' : ''}
           </div>
           <div class="lib-trans">${it.jp}</div>
           <p class="lib-note">${it.note}</p>
-        </div>`;
+        </button>`;
     }).join('');
 
     // Expand families automatically while searching so matches are visible.
@@ -1115,6 +1178,14 @@ function renderLibrary() {
       state.readLibrary.add(key);
       saveProgress();
       addXp(12, 'Read the Greater Codex');
+    });
+  });
+
+  $$('.lib-item', box).forEach(item => {
+    item.addEventListener('click', () => {
+      const id = item.dataset.libId;
+      if (item.dataset.featured) openModal(id);
+      else openLibraryModal(id);
     });
   });
 }
@@ -1156,8 +1227,8 @@ function wireNav() {
 /* Snapshot of the numbers each achievement's check() is evaluated against. */
 function achContext() {
   return {
-    knivesFound: state.collected.size,
-    knivesTotal: state.knives.length,
+    knivesFound: discoveredKnives(),
+    knivesTotal: totalKnives(),
     steelsFound: state.steelsRead.size,
     steelsTotal: state.steels.length,
     dojoRounds: state.dojo.rounds,
@@ -1285,6 +1356,7 @@ function openSteelModal(id) {
   const st = state.steelById[id];
   if (!st) return;
 
+  showAllBlocks();
   setKnifeOnly(false);
   $('#m-discovery').style.display = 'none';
   $('#modal-back .modal').classList.remove('discovered');
@@ -1325,6 +1397,53 @@ function openSteelModal(id) {
     renderSteelGrid();
     checkAchievements();
     renderDashboard();
+  }
+}
+
+/* Opens the shared detail modal for a Greater Codex (library-only) knife.
+   These entries carry a single descriptive note rather than full stats, so the
+   stats / best / avoid / specs blocks are hidden. First inspection discovers
+   the blade and counts it toward the collection. */
+function openLibraryModal(id) {
+  const it = state.libById[id];
+  if (!it) return;
+
+  const isNew = !state.libDiscovered.has(id);
+
+  showAllBlocks();
+  setKnifeOnly(false);
+  // Library entries only have a note — hide the data-driven blocks.
+  ['#m-stats', '#m-best', '#m-avoid', '#m-specs'].forEach(sel => {
+    const block = $(sel) && $(sel).closest('.detail-block');
+    if (block) block.style.display = 'none';
+  });
+
+  $('#m-emoji').textContent = it._emoji;
+  $('#m-name').innerHTML = `${escapeHtml(it.name)} <span class="kanji">${escapeHtml(it.kanji)}</span>`;
+  $('#m-role').textContent = it._family;
+  $('#m-trans').textContent = `“${it.jp}” · Greater Codex`;
+  $('#m-purpose').textContent = it.note;
+  $('#m-tip').textContent = 'Part of the wider world of Japanese blades — tap through the Greater Codex to discover them all.';
+
+  state.modalId = id;
+  state.modalKind = 'library';
+
+  const modal = $('#modal-back .modal');
+  modal.classList.toggle('discovered', isNew);
+  $('#m-discovery').style.display = isNew ? '' : 'none';
+
+  $('#modal-back').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  if (isNew) {
+    state.libDiscovered.add(id);
+    noteDiscovery(it._emoji, it.name);
+    saveProgress();
+    addXp(8, `Discovered the ${it.name}`);
+    renderLibrary();
+    checkAchievements();
+    renderDashboard();
+    maybeCollectionComplete();
   }
 }
 
@@ -1574,13 +1693,15 @@ function renderAnatomy() {
   const parts = CD.anatomy || [];
   box.innerHTML = `
     <div class="anatomy-stage">
-      <svg class="anatomy-svg" viewBox="0 0 400 150" role="img" aria-label="Diagram of a Japanese chef's knife">
-        <rect x="8" y="60" width="104" height="30" rx="9" class="an-handle"/>
-        <circle cx="30" cy="75" r="2.6" class="an-rivet"/>
-        <circle cx="60" cy="75" r="2.6" class="an-rivet"/>
-        <circle cx="90" cy="75" r="2.6" class="an-rivet"/>
-        <path d="M112,60 L344,58 Q388,60 388,78 Q368,88 120,90 L112,90 Z" class="an-blade"/>
-        <path d="M120,72 L360,72" class="an-shinogi"/>
+      <svg class="anatomy-svg" viewBox="0 0 420 200" role="img" aria-label="Diagram of a Japanese knife: handle, blade and clad construction">
+        <rect x="8" y="72" width="116" height="46" rx="10" class="an-handle"/>
+        <path class="an-facet" d="M8 88 H124"/>
+        <rect x="120" y="70" width="16" height="50" rx="3" class="an-ferrule"/>
+        <path class="an-blade" d="M136,74 L300,64 Q372,64 406,104 Q356,126 205,124 L150,122 L136,110 Z"/>
+        <path class="an-hagane" d="M150,122 L205,124 Q356,126 406,104 L398,112 Q346,120 208,118 L152,116 Z"/>
+        <path class="an-shinogi" d="M150,100 L400,104"/>
+        <path class="an-clad" d="M152,114 Q270,118 396,116"/>
+        <path class="an-mei" d="M196,80 v16 M204,80 v16 M192,86 h16 M192,92 h16"/>
       </svg>
       ${parts.map(p => `
         <button class="an-dot" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%" aria-label="${escapeHtml(p.name)}">
@@ -1693,16 +1814,15 @@ function renderDashboard() {
     toNext = `${nxt.min - state.xp} XP to ${nxt.name}`;
   }
 
-  const found = state.collected.size;
-  const total = state.knives.length;
+  const found = discoveredKnives();
+  const total = totalKnives();
   const steelFound = state.steelsRead.size;
   const steelTotal = state.steels.length;
   const owned = Object.values(state.roll).filter(r => r && r.owned).length;
   const streak = state.daily.streak || 0;
   const dailyDone = state.daily.done && state.daily.date === todayKey();
 
-  const recentId = [...state.collected].slice(-1)[0];
-  const recent = recentId ? state.byId[recentId] : null;
+  const recent = state.recent || null;
   const rec = continueRecommendation();
 
   box.innerHTML = `
@@ -1788,8 +1908,13 @@ async function init() {
   // Guard against an outdated saved Dojo mode.
   if (!DOJO_MODES.some(m => m.id === state.dojoMode)) state.dojoMode = 'all';
 
+  // Index every Greater Codex knife so the whole library is discoverable.
+  buildLibraryIndex();
+
   // prune any collected ids that no longer exist
   state.collected = new Set([...state.collected].filter(id => state.byId[id]));
+  // prune library discoveries that no longer exist
+  state.libDiscovered = new Set([...state.libDiscovered].filter(id => state.libById[id]));
   // prune roll entries for removed knives
   Object.keys(state.roll).forEach(id => { if (!state.byId[id]) delete state.roll[id]; });
 

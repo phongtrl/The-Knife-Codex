@@ -108,24 +108,39 @@ window.CODEX_DATA = {
   ],
 
   /* ---------- Knife anatomy ----------
-     x/y are percentage positions of the hotspot over the SVG diagram. */
+     x/y are percentage positions of the hotspot over the SVG diagram.
+     Covers the wa-handle, the blade profile and the kasumi (clad) construction. */
   anatomy: [
-    { id: 'tip',    name: 'Tip',    jp: '切先 · Kissaki', x: 90, y: 30,
-      note: 'The pointed front of the blade. Used for fine, detailed work — scoring, piercing, and delicate cuts.' },
-    { id: 'spine',  name: 'Spine',  jp: '峰 · Mine', x: 52, y: 20,
-      note: 'The thick, unsharpened top of the blade. Its thickness sets the knife\'s stiffness; you can rest a guiding finger here.' },
-    { id: 'edge',   name: 'Edge',   jp: '刃 · Ha', x: 55, y: 74,
-      note: 'The sharpened cutting line running the length of the blade. This is what you refine on the stones.' },
-    { id: 'heel',   name: 'Heel',   jp: '刃元 · Hamoto', x: 30, y: 74,
-      note: 'The rear corner of the edge, nearest the handle. The strongest part of the edge — used for powering through tougher food.' },
-    { id: 'choil',  name: 'Choil',  jp: '顎 · Ago', x: 25, y: 62,
-      note: 'The unsharpened notch where the edge meets the handle. A pinch-grip anchor and a safe place to rest a finger.' },
-    { id: 'shinogi', name: 'Shinogi', jp: '鎬 · Shinogi', x: 60, y: 46,
-      note: 'The ridge line between the flat face and the bevel, most pronounced on single-bevel knives. It defines the bevel\'s width and look.' },
-    { id: 'tang',   name: 'Tang',   jp: '中子 · Nakago', x: 13, y: 46,
-      note: 'The part of the blade steel that extends into the handle. It anchors the blade and balances the knife.' },
-    { id: 'handle', name: 'Handle', jp: '柄 · Wa-e', x: 6, y: 46,
-      note: 'The grip. Traditional Japanese "wa" handles are light wood in D, oval or octagonal shapes, shifting balance toward the blade.' }
+    { id: 'ejiri',    name: 'Butt',          jp: '江尻 · Ejiri', x: 4,  y: 45,
+      note: 'The very end of the handle. On a wa-handled knife it is often left as a simple flat or rounded cap.' },
+    { id: 'e',        name: 'Handle',        jp: '柄 · E', x: 17, y: 45,
+      note: 'The grip. Traditional Japanese "wa" handles are light wood in D, oval or octagonal shapes, shifting balance toward the blade.' },
+    { id: 'kakumaki', name: 'Ferrule',       jp: '角巻 · Kakumaki', x: 32, y: 45,
+      note: 'The collar (often buffalo horn or pakka) where the handle meets the tang. It seals the wood and stops it splitting.' },
+    { id: 'nakago',   name: 'Tang',          jp: '中子 · Nakago', x: 22, y: 60,
+      note: 'The part of the blade steel that extends into the handle, hidden inside the wood. It anchors the blade and sets the balance.' },
+    { id: 'machi',    name: 'Machi',         jp: '区 · Machi', x: 35, y: 56,
+      note: 'The shoulder where the tang steps down from the full-width blade — the transition point between blade and handle.' },
+    { id: 'mei',      name: 'Kanji',         jp: '銘 · Mei', x: 48, y: 42,
+      note: 'The maker\'s signature, forged or engraved into the blade face — the smith\'s name, and sometimes the steel or workshop.' },
+    { id: 'mune',     name: 'Spine',         jp: '峰 · Mune', x: 66, y: 30,
+      note: 'The thick, unsharpened top of the blade. Its thickness sets stiffness; rest a guiding finger here for control.' },
+    { id: 'jigane',   name: 'Cladding',      jp: '地金 · Jigane', x: 50, y: 38,
+      note: 'The softer iron or stainless jacket wrapped around the hard core. It adds toughness and gives kasumi knives their misty finish.' },
+    { id: 'shinogi',  name: 'Shinogi line',  jp: '鎬 · Shinogi', x: 70, y: 47,
+      note: 'The ridge line between the upper flat (hira) and the bevel (kireha). It defines the bevel\'s width and the blade\'s look.' },
+    { id: 'hagane',   name: 'Hard steel',    jp: '鋼 · Hagane', x: 62, y: 58,
+      note: 'The hard, high-carbon core steel that forms the cutting edge. It takes and holds the keen edge; the clad line marks its boundary.' },
+    { id: 'hamoto',   name: 'Heel',          jp: '刃元 · Hamoto', x: 39, y: 62,
+      note: 'The rear of the cutting edge, nearest the handle — the strongest part of the edge, used for powering through tougher food.' },
+    { id: 'ago',      name: 'Choil',         jp: '顎 · Ago', x: 35, y: 64,
+      note: 'The unsharpened notch where the edge meets the tang. A pinch-grip anchor and a safe place to rest a finger.' },
+    { id: 'sori',     name: 'Belly curve',   jp: '反り · Sori', x: 70, y: 62,
+      note: 'The curvature of the edge. More curve suits rocking cuts; a flatter edge favours clean push-cuts and chopping.' },
+    { id: 'hasaki',   name: 'Cutting edge',  jp: '刃先 · Hasaki', x: 80, y: 60,
+      note: 'The sharpened cutting line itself — the apex you refine on the stones. Everything else exists to support it.' },
+    { id: 'kissaki',  name: 'Tip & point',   jp: '切先 · Kissaki', x: 93, y: 50,
+      note: 'The pointed front of the blade, used for fine, detailed work — scoring, piercing and delicate cuts.' }
   ],
 
   /* ---------- Knife-vs-Knife matrix ----------

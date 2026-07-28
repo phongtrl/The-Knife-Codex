@@ -140,7 +140,13 @@ window.CODEX_DATA = {
     { id: 'hasaki',   name: 'Cutting edge',  jp: '刃先 · Hasaki', x: 80, y: 60,
       note: 'The sharpened cutting line itself — the apex you refine on the stones. Everything else exists to support it.' },
     { id: 'kissaki',  name: 'Tip & point',   jp: '切先 · Kissaki', x: 93, y: 50,
-      note: 'The pointed front of the blade, used for fine, detailed work — scoring, piercing and delicate cuts.' }
+      note: 'The pointed front of the blade, used for fine, detailed work — scoring, piercing and delicate cuts.' },
+    { id: 'cladline', name: 'Clad line',     jp: '境 · Kasumi', x: 50, y: 50,
+      note: 'The visible boundary where the soft cladding meets the hard core steel — the misty "kasumi" line seen on san-mai blades.' },
+    { id: 'kireha',   name: 'Bevel face',    jp: '切刃 · Kireha', x: 80, y: 55,
+      note: 'The ground bevel that runs from the shinogi line down to the cutting edge — the surface you lay flat on the stone.' },
+    { id: 'hira',     name: 'Blade face',    jp: '平 · Hira', x: 55, y: 45,
+      note: 'The broad flat face of the blade above the shinogi line. On single-bevel knives it is kept dead flat against the stone.' }
   ],
 
   /* ---------- Knife-vs-Knife matrix ----------

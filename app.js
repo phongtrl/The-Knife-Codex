@@ -1142,12 +1142,26 @@ function renderLibrary() {
       const found = it._featuredId
         ? state.collected.has(it._featuredId)
         : state.libDiscovered.has(it._id);
+
+      if (!found) {
+        // Undiscovered — mirror the locked cards of the Knife Codex.
+        return `
+        <button type="button" class="lib-item locked" data-lib-id="${it._id}" data-featured="${it._featuredId ? '1' : ''}" title="Undiscovered — tap to reveal">
+          <div class="lib-item-head">
+            <span class="lib-name lib-locked-name">Undiscovered <span class="lib-kanji">秘</span></span>
+            <span class="lib-badge lib-lock">🔒</span>
+          </div>
+          <div class="lib-trans">? ? ?</div>
+          <p class="lib-note">Tap to inspect this blade and add it to your codex.</p>
+        </button>`;
+      }
+
       return `
-        <button type="button" class="lib-item${inCodex ? ' in-codex' : ''}${found ? ' found' : ''}" data-lib-id="${it._id}" data-featured="${it._featuredId ? '1' : ''}">
+        <button type="button" class="lib-item found${inCodex ? ' in-codex' : ''}" data-lib-id="${it._id}" data-featured="${it._featuredId ? '1' : ''}">
           <div class="lib-item-head">
             <span class="lib-name">${it.name} <span class="lib-kanji">${it.kanji}</span></span>
             ${inCodex ? '<span class="lib-badge">★ In the Codex</span>'
-              : found ? '<span class="lib-badge lib-found">✓ Discovered</span>' : ''}
+              : '<span class="lib-badge lib-found">✓ Discovered</span>'}
           </div>
           <div class="lib-trans">${it.jp}</div>
           <p class="lib-note">${it.note}</p>
@@ -1687,44 +1701,78 @@ function showFixit(id) {
 }
 
 /* ---------- Knife anatomy ---------- */
+/* Interactive hotspots laid over the reference image (assets/knife-anatomy.png).
+   x/y = centre of the hotspot as a percentage of the image; w/h size the
+   invisible hit-area so it sits over the printed label. Some parts appear
+   twice in the diagram (main view + magnified view) and so list two spots. */
+const ANATOMY_HOTSPOTS = [
+  // --- main knife (top) ---
+  { id: 'ejiri',    x: 5.0,  y: 20.5, w: 9,  h: 9 },
+  { id: 'e',        x: 21.0, y: 6.5,  w: 11, h: 10 },
+  { id: 'kakumaki', x: 40.5, y: 7.0,  w: 13, h: 10 },
+  { id: 'mei',      x: 54.0, y: 8.0,  w: 9,  h: 9 },
+  { id: 'mune',     x: 69.5, y: 6.5,  w: 9,  h: 10 },
+  { id: 'shinogi',  x: 92.5, y: 19.5, w: 11, h: 8 },
+  { id: 'kissaki',  x: 92.5, y: 39.0, w: 12, h: 10 },
+  { id: 'sori',     x: 69.0, y: 41.0, w: 13, h: 10 },
+  { id: 'hasaki',   x: 80.5, y: 47.0, w: 13, h: 10 },
+  { id: 'hamoto',   x: 52.0, y: 41.5, w: 11, h: 10 },
+  { id: 'ago',      x: 40.0, y: 37.5, w: 9,  h: 9 },
+  { id: 'nakago',   x: 18.0, y: 34.0, w: 11, h: 10 },
+  // --- magnified blade profile (lower-left) ---
+  { id: 'machi',    x: 16.5, y: 55.5, w: 9,  h: 8 },
+  { id: 'hagane',   x: 40.0, y: 62.0, w: 11, h: 8 },
+  { id: 'cladline', x: 41.0, y: 69.0, w: 11, h: 8 },
+  { id: 'jigane',   x: 40.0, y: 77.5, w: 10, h: 8 },
+  { id: 'shinogi',  x: 41.0, y: 88.5, w: 11, h: 8 },
+  { id: 'mune',     x: 16.0, y: 81.0, w: 9,  h: 9 },
+  // --- tip cross-section (lower-right) ---
+  { id: 'kireha',   x: 82.0, y: 61.5, w: 9,  h: 8 },
+  { id: 'hira',     x: 81.5, y: 75.0, w: 9,  h: 8 }
+];
+
 function renderAnatomy() {
   const box = $('#anatomy');
   if (!box) return;
-  const parts = CD.anatomy || [];
+  const byId = Object.fromEntries((CD.anatomy || []).map(p => [p.id, p]));
+
+  const spots = ANATOMY_HOTSPOTS
+    .filter(s => byId[s.id])
+    .map((s, i) => `
+      <button class="an-hot" data-id="${s.id}" data-i="${i}"
+        style="left:${s.x}%;top:${s.y}%;width:${s.w}%;height:${s.h}%"
+        aria-label="${escapeHtml(byId[s.id].name)}"></button>`).join('');
+
   box.innerHTML = `
     <div class="anatomy-stage">
-      <svg class="anatomy-svg" viewBox="0 0 420 200" role="img" aria-label="Diagram of a Japanese knife: handle, blade and clad construction">
-        <rect x="8" y="72" width="116" height="46" rx="10" class="an-handle"/>
-        <path class="an-facet" d="M8 88 H124"/>
-        <rect x="120" y="70" width="16" height="50" rx="3" class="an-ferrule"/>
-        <path class="an-blade" d="M136,74 L300,64 Q372,64 406,104 Q356,126 205,124 L150,122 L136,110 Z"/>
-        <path class="an-hagane" d="M150,122 L205,124 Q356,126 406,104 L398,112 Q346,120 208,118 L152,116 Z"/>
-        <path class="an-shinogi" d="M150,100 L400,104"/>
-        <path class="an-clad" d="M152,114 Q270,118 396,116"/>
-        <path class="an-mei" d="M196,80 v16 M204,80 v16 M192,86 h16 M192,92 h16"/>
-      </svg>
-      ${parts.map(p => `
-        <button class="an-dot" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%" aria-label="${escapeHtml(p.name)}">
-          <span></span>
-        </button>`).join('')}
+      <img class="anatomy-img" src="assets/knife-anatomy.png"
+        alt="Labelled diagram of a Japanese knife showing handle, blade and clad construction"
+        onerror="this.closest('.anatomy-stage').classList.add('img-missing')" />
+      <div class="an-hotspots">${spots}</div>
+      <div class="an-missing">
+        <p><b>Anatomy image not found.</b></p>
+        <p>Save the diagram to <code>assets/knife-anatomy.png</code> to see it here.</p>
+      </div>
     </div>
     <div class="anatomy-info" id="anatomy-info">
-      <p>Tap a labelled point on the blade to learn what it does.</p>
+      <p>Hover or tap any label on the diagram to learn what that part of the knife does.</p>
     </div>`;
-  $$('.an-dot', box).forEach(dot => {
-    const show = () => showAnatomy(dot.dataset.id, dot);
-    dot.addEventListener('click', show);
-    dot.addEventListener('mouseenter', show);
-    dot.addEventListener('focus', show);
+
+  $$('.an-hot', box).forEach(hot => {
+    const show = () => showAnatomy(hot.dataset.id, hot);
+    hot.addEventListener('click', show);
+    hot.addEventListener('mouseenter', show);
+    hot.addEventListener('focus', show);
   });
 }
 
-function showAnatomy(id, dot) {
+function showAnatomy(id, hot) {
   const p = (CD.anatomy || []).find(x => x.id === id);
   if (!p) return;
-  $$('.an-dot', $('#anatomy')).forEach(d => d.classList.toggle('active', d === dot));
+  // Highlight every hotspot that shares this id (a part may appear twice).
+  $$('.an-hot', $('#anatomy')).forEach(h => h.classList.toggle('active', h.dataset.id === id));
   $('#anatomy-info').innerHTML = `
-    <div class="an-info-name">${p.name} <span class="an-jp">${p.jp}</span></div>
+    <div class="an-info-name">${escapeHtml(p.name)} <span class="an-jp">${escapeHtml(p.jp)}</span></div>
     <p>${escapeHtml(p.note)}</p>`;
 }
 

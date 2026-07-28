@@ -392,15 +392,11 @@
             </label>
           </div>
           <div class="own-form" id="m-own-form" hidden>
-            <div class="own-grid">
-              <label>Blade length<input type="text" id="own-length" placeholder="e.g. 210 mm" autocomplete="off" /></label>
-              <label>Steel<input type="text" id="own-steel" placeholder="e.g. VG10" autocomplete="off" /></label>
-              <label>Maker<input type="text" id="own-maker" placeholder="e.g. Tojiro" autocomplete="off" /></label>
-              <label>Sharpening angle<input type="text" id="own-angle" placeholder="e.g. 15\u00b0 per side" autocomplete="off" /></label>
-              <label>Last sharpened<input type="date" id="own-sharpened" /></label>
+            <div id="m-own-list"></div>
+            <div class="own-actions">
+              <button type="button" class="btn ghost small" id="own-add">+ Add another</button>
+              <div class="own-saved" id="own-saved" aria-live="polite"></div>
             </div>
-            <label class="own-notes">Notes<textarea id="own-notes" rows="2" placeholder="Personal notes…"></textarea></label>
-            <div class="own-saved" id="own-saved" aria-live="polite"></div>
           </div>
         </div>
 

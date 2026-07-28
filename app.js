@@ -115,6 +115,18 @@ function loadProgress() {
     state.libDiscovered = new Set(data.libDiscovered || []);
     state.recent = data.recent || null;
     state.roll = data.roll || {};
+    // Migrate legacy single-record ownership -> an array of records so a knife
+    // can be owned more than once.
+    Object.keys(state.roll).forEach(id => {
+      const r = state.roll[id];
+      if (Array.isArray(r)) return;
+      if (r && r.owned) {
+        const { owned, ...rest } = r;
+        state.roll[id] = [rest];
+      } else {
+        delete state.roll[id];
+      }
+    });
     state.achievements = new Set(data.achievements || []);
     state.seenQuiz = new Set(data.seenQuiz || []);
     if (data.dojo) state.dojo = { ...state.dojo, ...data.dojo };
@@ -1462,81 +1474,156 @@ function openLibraryModal(id) {
 }
 
 /* ---------- My Knife Roll ---------- */
-/* Load the ownership checkbox + form from the stored record for this knife. */
+/* Ownership is stored as state.roll[id] = [ {length, steel, maker, angle,
+   lastSharpened, notes}, ... ] so a knife can be owned more than once. */
+function getRoll(id) {
+  return Array.isArray(state.roll[id]) ? state.roll[id] : [];
+}
+
+/* One editable entry (a single physical knife) in the ownership form. */
+function ownEntryHtml(entry, i) {
+  const v = f => escapeHtml(entry[f] || '');
+  return `
+    <div class="own-entry" data-i="${i}">
+      <div class="own-entry-head">
+        <span class="own-entry-title">Knife #${i + 1}</span>
+        <button type="button" class="own-remove" data-i="${i}">Remove</button>
+      </div>
+      <div class="own-grid">
+        <label>Blade length<input type="text" data-field="length" value="${v('length')}" placeholder="e.g. 210 mm" autocomplete="off" /></label>
+        <label>Steel<input type="text" data-field="steel" value="${v('steel')}" placeholder="e.g. VG10" autocomplete="off" /></label>
+        <label>Maker<input type="text" data-field="maker" value="${v('maker')}" placeholder="e.g. Tojiro" autocomplete="off" /></label>
+        <label>Sharpening angle<input type="text" data-field="angle" value="${v('angle')}" placeholder="e.g. 15° per side" autocomplete="off" /></label>
+        <label>Last sharpened<input type="date" data-field="lastSharpened" value="${v('lastSharpened')}" /></label>
+      </div>
+      <label class="own-notes">Notes<textarea data-field="notes" rows="2" placeholder="Personal notes…">${v('notes')}</textarea></label>
+    </div>`;
+}
+
+/* Render every ownership entry for the currently open knife. */
+function renderOwnEntries(id) {
+  const list = $('#m-own-list');
+  if (!list) return;
+  list.innerHTML = getRoll(id).map(ownEntryHtml).join('');
+}
+
+/* Load the ownership checkbox + entry forms for this knife. */
 function bindOwnership(id) {
-  const rec = state.roll[id] || {};
-  const set = (sel, val) => { const el = $(sel); if (el) el.value = val || ''; };
+  const arr = getRoll(id);
   const chk = $('#m-own');
   const form = $('#m-own-form');
-  if (chk) chk.checked = !!rec.owned;
-  if (form) form.hidden = !rec.owned;
-  set('#own-length', rec.length);
-  set('#own-steel', rec.steel);
-  set('#own-maker', rec.maker);
-  set('#own-angle', rec.angle);
-  set('#own-sharpened', rec.lastSharpened);
-  set('#own-notes', rec.notes);
+  if (chk) chk.checked = arr.length > 0;
+  if (form) form.hidden = arr.length === 0;
+  renderOwnEntries(id);
   const saved = $('#own-saved');
   if (saved) saved.textContent = '';
+}
+
+function flashOwnSaved() {
+  const saved = $('#own-saved');
+  if (saved) saved.textContent = 'Saved ✓';
 }
 
 function onOwnToggle() {
   const id = state.modalId;
   if (!id || state.modalKind !== 'knife') return;
   const owned = $('#m-own').checked;
-  const rec = state.roll[id] || {};
-  rec.owned = owned;
-  state.roll[id] = rec;
+  if (owned) {
+    if (!getRoll(id).length) state.roll[id] = [{}];
+  } else {
+    delete state.roll[id];
+  }
   $('#m-own-form').hidden = !owned;
+  renderOwnEntries(id);
   saveProgress();
   renderRoll();
   renderDashboard();
 }
 
-function onOwnFieldChange() {
+function onOwnAdd() {
   const id = state.modalId;
   if (!id || state.modalKind !== 'knife') return;
-  const rec = state.roll[id] || { owned: true };
-  rec.owned = $('#m-own').checked || rec.owned;
-  rec.length = $('#own-length').value.trim();
-  rec.steel = $('#own-steel').value.trim();
-  rec.maker = $('#own-maker').value.trim();
-  rec.angle = $('#own-angle').value.trim();
-  rec.lastSharpened = $('#own-sharpened').value;
-  rec.notes = $('#own-notes').value.trim();
-  state.roll[id] = rec;
+  if (!Array.isArray(state.roll[id])) state.roll[id] = [];
+  state.roll[id].push({});
+  $('#m-own').checked = true;
+  $('#m-own-form').hidden = false;
+  renderOwnEntries(id);
   saveProgress();
-  const saved = $('#own-saved');
-  if (saved) saved.textContent = 'Saved ✓';
   renderRoll();
+  renderDashboard();
+  // Focus the first field of the entry just added.
+  const entries = $$('#m-own-list .own-entry');
+  const last = entries[entries.length - 1];
+  if (last) last.querySelector('input')?.focus();
+}
+
+function onOwnFieldChange(e) {
+  const id = state.modalId;
+  if (!id || state.modalKind !== 'knife') return;
+  const input = e.target;
+  const field = input.dataset.field;
+  if (!field) return;
+  const entryEl = input.closest('.own-entry');
+  if (!entryEl) return;
+  const i = +entryEl.dataset.i;
+  const arr = state.roll[id];
+  if (!Array.isArray(arr) || !arr[i]) return;
+  arr[i][field] = input.value.trim();
+  saveProgress();
+  flashOwnSaved();
+  renderRoll();
+}
+
+function onOwnListClick(e) {
+  const btn = e.target.closest('.own-remove');
+  if (!btn) return;
+  const id = state.modalId;
+  if (!id || state.modalKind !== 'knife') return;
+  const arr = state.roll[id];
+  if (!Array.isArray(arr)) return;
+  arr.splice(+btn.dataset.i, 1);
+  if (!arr.length) {
+    delete state.roll[id];
+    $('#m-own').checked = false;
+    $('#m-own-form').hidden = true;
+  }
+  renderOwnEntries(id);
+  saveProgress();
+  renderRoll();
+  renderDashboard();
 }
 
 function renderRoll() {
   const box = $('#knife-roll');
   if (!box) return;
-  const owned = Object.entries(state.roll).filter(([, r]) => r && r.owned);
-  if (!owned.length) {
+  const cards = [];
+  Object.entries(state.roll).forEach(([id, arr]) => {
+    if (!Array.isArray(arr) || !arr.length) return;
+    const k = state.byId[id];
+    if (!k) return;
+    arr.forEach((r, i) => {
+      const facts = [
+        r.length && `Length: ${escapeHtml(r.length)}`,
+        r.steel && `Steel: ${escapeHtml(r.steel)}`,
+        r.maker && `Maker: ${escapeHtml(r.maker)}`,
+        r.angle && `Angle: ${escapeHtml(r.angle)}`,
+        r.lastSharpened && `Sharpened: ${escapeHtml(r.lastSharpened)}`
+      ].filter(Boolean);
+      const title = arr.length > 1 ? `${k.name} <span class="roll-num">#${i + 1}</span>` : k.name;
+      cards.push(`
+        <article class="roll-card" data-id="${id}">
+          <div class="roll-top"><span class="roll-em">${k.emoji}</span><h4>${title}</h4></div>
+          ${facts.length ? `<ul class="roll-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+          ${r.notes ? `<p class="roll-notes">“${escapeHtml(r.notes)}”</p>` : ''}
+          <button class="btn ghost small roll-edit" data-id="${id}">Edit details</button>
+        </article>`);
+    });
+  });
+  if (!cards.length) {
     box.innerHTML = `<p class="empty-state">No knives in your roll yet. Open a Codex knife and toggle <b>“I own this knife”</b> to track its details.</p>`;
     return;
   }
-  box.innerHTML = owned.map(([id, r]) => {
-    const k = state.byId[id];
-    if (!k) return '';
-    const facts = [
-      r.length && `Length: ${escapeHtml(r.length)}`,
-      r.steel && `Steel: ${escapeHtml(r.steel)}`,
-      r.maker && `Maker: ${escapeHtml(r.maker)}`,
-      r.angle && `Angle: ${escapeHtml(r.angle)}`,
-      r.lastSharpened && `Sharpened: ${escapeHtml(r.lastSharpened)}`
-    ].filter(Boolean);
-    return `
-      <article class="roll-card" data-id="${id}">
-        <div class="roll-top"><span class="roll-em">${k.emoji}</span><h4>${k.name}</h4></div>
-        ${facts.length ? `<ul class="roll-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
-        ${r.notes ? `<p class="roll-notes">“${escapeHtml(r.notes)}”</p>` : ''}
-        <button class="btn ghost small roll-edit" data-id="${id}">Edit details</button>
-      </article>`;
-  }).join('');
+  box.innerHTML = cards.join('');
   $$('.roll-edit', box).forEach(b => b.addEventListener('click', () => openModal(b.dataset.id)));
 }
 
@@ -1706,29 +1793,32 @@ function showFixit(id) {
    invisible hit-area so it sits over the printed label. Some parts appear
    twice in the diagram (main view + magnified view) and so list two spots. */
 const ANATOMY_HOTSPOTS = [
+  // x/y = label centre (%), w/h = clickable size (%), tx/ty = where the arrow points (%)
   // --- main knife (top) ---
-  { id: 'ejiri',    x: 5.0,  y: 20.5, w: 9,  h: 9 },
-  { id: 'e',        x: 21.0, y: 6.5,  w: 11, h: 10 },
-  { id: 'kakumaki', x: 40.5, y: 7.0,  w: 13, h: 10 },
-  { id: 'mei',      x: 54.0, y: 8.0,  w: 9,  h: 9 },
-  { id: 'mune',     x: 69.5, y: 6.5,  w: 9,  h: 10 },
-  { id: 'shinogi',  x: 92.5, y: 19.5, w: 11, h: 8 },
-  { id: 'kissaki',  x: 92.5, y: 39.0, w: 12, h: 10 },
-  { id: 'sori',     x: 69.0, y: 41.0, w: 13, h: 10 },
-  { id: 'hasaki',   x: 80.5, y: 47.0, w: 13, h: 10 },
-  { id: 'hamoto',   x: 52.0, y: 41.5, w: 11, h: 10 },
-  { id: 'ago',      x: 40.0, y: 37.5, w: 9,  h: 9 },
-  { id: 'nakago',   x: 18.0, y: 34.0, w: 11, h: 10 },
+  { id: 'ejiri',    x: 5.0,  y: 20.5, w: 9,  h: 9,  tx: 12.8, ty: 20.6 },
+  { id: 'e',        x: 21.0, y: 6.5,  w: 11, h: 10, tx: 22.4, ty: 13.8 },
+  { id: 'kakumaki', x: 40.5, y: 7.0,  w: 13, h: 10, tx: 40.2, ty: 18.6 },
+  { id: 'mei',      x: 54.0, y: 8.0,  w: 9,  h: 9,  tx: 54.9, ty: 17.2 },
+  { id: 'mune',     x: 69.5, y: 6.5,  w: 9,  h: 10, tx: 70.1, ty: 17.6 },
+  { id: 'shinogi',  x: 92.5, y: 19.5, w: 11, h: 8,  tx: 85.5, ty: 21.4 },
+  { id: 'kissaki',  x: 92.5, y: 39.0, w: 12, h: 10, tx: 90.5, ty: 28.4 },
+  { id: 'sori',     x: 69.0, y: 41.0, w: 13, h: 10, tx: 71.8, ty: 34.1 },
+  { id: 'hasaki',   x: 80.5, y: 47.0, w: 13, h: 10, tx: 79.6, ty: 31.9 },
+  { id: 'hamoto',   x: 52.0, y: 41.5, w: 11, h: 10, tx: 53.0, ty: 34.9 },
+  { id: 'ago',      x: 40.0, y: 37.5, w: 9,  h: 9,  tx: 46.2, ty: 26.7 },
+  { id: 'nakago',   x: 18.0, y: 34.0, w: 11, h: 10, tx: 25.9, ty: 24.5 },
   // --- magnified blade profile (lower-left) ---
-  { id: 'machi',    x: 16.5, y: 55.5, w: 9,  h: 8 },
-  { id: 'hagane',   x: 40.0, y: 62.0, w: 11, h: 8 },
-  { id: 'cladline', x: 41.0, y: 69.0, w: 11, h: 8 },
-  { id: 'jigane',   x: 40.0, y: 77.5, w: 10, h: 8 },
-  { id: 'shinogi',  x: 41.0, y: 88.5, w: 11, h: 8 },
-  { id: 'mune',     x: 16.0, y: 81.0, w: 9,  h: 9 },
+  { id: 'nakago',   x: 27.5, y: 47.0, w: 7,  h: 8,  tx: 27.1, ty: 46.4 },
+  { id: 'machi',    x: 16.5, y: 55.5, w: 9,  h: 8,  tx: 27.2, ty: 55.7 },
+  { id: 'hagane',   x: 40.0, y: 62.0, w: 11, h: 8,  tx: 32.8, ty: 63.3 },
+  { id: 'cladline', x: 41.0, y: 69.0, w: 11, h: 8,  tx: 33.7, ty: 69.9 },
+  { id: 'jigane',   x: 40.0, y: 77.5, w: 10, h: 8,  tx: 27.9, ty: 78.1 },
+  { id: 'shinogi',  x: 41.0, y: 88.5, w: 11, h: 8,  tx: 29.9, ty: 88.5 },
+  { id: 'mune',     x: 16.0, y: 81.0, w: 9,  h: 9,  tx: 26.5, ty: 81.4 },
   // --- tip cross-section (lower-right) ---
-  { id: 'kireha',   x: 82.0, y: 61.5, w: 9,  h: 8 },
-  { id: 'hira',     x: 81.5, y: 75.0, w: 9,  h: 8 }
+  { id: 'hasaki',   x: 77.5, y: 47.0, w: 7,  h: 8,  tx: 72.2, ty: 52.1 },
+  { id: 'kireha',   x: 82.0, y: 61.5, w: 9,  h: 8,  tx: 73.6, ty: 61.2 },
+  { id: 'hira',     x: 81.5, y: 75.0, w: 9,  h: 8,  tx: 74.0, ty: 75.8 }
 ];
 
 function renderAnatomy() {
@@ -1739,9 +1829,14 @@ function renderAnatomy() {
   const spots = ANATOMY_HOTSPOTS
     .filter(s => byId[s.id])
     .map((s, i) => `
-      <button class="an-hot" data-id="${s.id}" data-i="${i}"
+      <button class="an-hot" data-id="${s.id}" data-i="${i}" data-tx="${s.tx}" data-ty="${s.ty}"
         style="left:${s.x}%;top:${s.y}%;width:${s.w}%;height:${s.h}%"
         aria-label="${escapeHtml(byId[s.id].name)}"></button>`).join('');
+
+  // One focus dot per hotspot; a part shown in two views has two dots.
+  const dots = ANATOMY_HOTSPOTS
+    .filter(s => byId[s.id])
+    .map(s => `<div class="an-dot" data-id="${s.id}" style="left:${s.tx}%;top:${s.ty}%"></div>`).join('');
 
   box.innerHTML = `
     <div class="anatomy-stage">
@@ -1749,6 +1844,7 @@ function renderAnatomy() {
         alt="Labelled diagram of a Japanese knife showing handle, blade and clad construction"
         onerror="this.closest('.anatomy-stage').classList.add('img-missing')" />
       <div class="an-hotspots">${spots}</div>
+      <div class="an-dots" id="an-dots">${dots}</div>
       <div class="an-missing">
         <p><b>Anatomy image not found.</b></p>
         <p>Save the diagram to <code>assets/knife-anatomy.png</code> to see it here.</p>
@@ -1769,8 +1865,8 @@ function renderAnatomy() {
 function showAnatomy(id, hot) {
   const p = (CD.anatomy || []).find(x => x.id === id);
   if (!p) return;
-  // Highlight every hotspot that shares this id (a part may appear twice).
-  $$('.an-hot', $('#anatomy')).forEach(h => h.classList.toggle('active', h.dataset.id === id));
+  // Light up every dot belonging to this part (some appear in two views).
+  $$('#an-dots .an-dot').forEach(d => d.classList.toggle('show', d.dataset.id === id));
   $('#anatomy-info').innerHTML = `
     <div class="an-info-name">${escapeHtml(p.name)} <span class="an-jp">${escapeHtml(p.jp)}</span></div>
     <p>${escapeHtml(p.note)}</p>`;
@@ -1866,7 +1962,7 @@ function renderDashboard() {
   const total = totalKnives();
   const steelFound = state.steelsRead.size;
   const steelTotal = state.steels.length;
-  const owned = Object.values(state.roll).filter(r => r && r.owned).length;
+  const owned = Object.values(state.roll).reduce((n, arr) => n + (Array.isArray(arr) ? arr.length : 0), 0);
   const streak = state.daily.streak || 0;
   const dailyDone = state.daily.done && state.daily.date === todayKey();
 
@@ -1996,8 +2092,9 @@ async function init() {
 
   // My Knife Roll ownership controls (single binding; reads state.modalId).
   $('#m-own').addEventListener('change', onOwnToggle);
-  ['own-length', 'own-steel', 'own-maker', 'own-angle', 'own-sharpened', 'own-notes']
-    .forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', onOwnFieldChange); });
+  $('#own-add').addEventListener('click', onOwnAdd);
+  $('#m-own-list').addEventListener('input', onOwnFieldChange);
+  $('#m-own-list').addEventListener('click', onOwnListClick);
 
   // Live search — Codex grid, Greater Codex archive, Steel Codex.
   wireSearch('#codex-search', '#codex-search-clear', v => { state.search = v; renderGrid(); });

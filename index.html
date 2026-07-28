@@ -33,10 +33,26 @@
         <div class="xp-track" title="Progress to next rank">
           <div class="xp-fill" id="hud-xp-fill"></div>
         </div>
-        <button class="rank-badge" id="hud-rank" title="View all ranks">Apprentice</button>
+        <button class="rank-badge" id="hud-rank" title="View your profile">Apprentice</button>
       </div>
     </div>
   </header>
+
+  <!-- ===== Primary navigation ===== -->
+  <nav class="mainnav" aria-label="Primary">
+    <div class="mainnav-inner wrap">
+      <button class="navlink is-active" data-nav="home" aria-current="page"><span class="nav-ic" aria-hidden="true">🏠</span><span class="nav-tx">Home</span></button>
+      <button class="navlink" data-nav="codex"><span class="nav-ic" aria-hidden="true">📖</span><span class="nav-tx">Codex</span></button>
+      <button class="navlink" data-nav="dojo"><span class="nav-ic" aria-hidden="true">🥢</span><span class="nav-tx">Dojo</span></button>
+      <button class="navlink" data-nav="learn"><span class="nav-ic" aria-hidden="true">🎓</span><span class="nav-tx">Learn</span></button>
+      <button class="navlink" data-nav="profile"><span class="nav-ic" aria-hidden="true">👤</span><span class="nav-tx">Profile</span></button>
+    </div>
+  </nav>
+
+  <main class="views">
+
+  <!-- ===== HOME VIEW ===== -->
+  <section class="view is-active" id="view-home" data-view="home">
 
   <!-- ===== Hero ===== -->
   <section class="hero wrap">
@@ -53,6 +69,14 @@
     </div>
   </section>
 
+  <!-- ===== Returning-user dashboard ===== -->
+  <section class="wrap dash-wrap" id="dashboard" aria-label="Your progress"></section>
+
+  </section><!-- /view-home -->
+
+  <!-- ===== CODEX VIEW ===== -->
+  <section class="view" id="view-codex" data-view="codex" hidden>
+
   <!-- ===== Codex / Collection ===== -->
   <section class="section wrap" id="codex">
     <div class="section-head">
@@ -63,6 +87,11 @@
       <p>Tap any card to inspect a knife. View it once to add it to your collection.</p>
     </div>
 
+    <div class="codex-search">
+      <span class="search-ic" aria-hidden="true">🔍</span>
+      <input type="search" id="codex-search" class="search-input" placeholder="Search by name, kanji, or use…" aria-label="Search the Codex" autocomplete="off" />
+      <button class="search-clear" id="codex-search-clear" aria-label="Clear search" hidden>✕</button>
+    </div>
     <div class="filters" id="filters"></div>
     <div class="grid" id="knife-grid"></div>
   </section>
@@ -76,7 +105,29 @@
       </div>
       <p>Beyond the ten essentials lies a whole world of specialists. Expand each family to explore the rarer blades of the Japanese kitchen.</p>
     </div>
+    <div class="codex-search">
+      <span class="search-ic" aria-hidden="true">🔍</span>
+      <input type="search" id="library-search" class="search-input" placeholder="Search the archive by name or use…" aria-label="Search the Greater Codex" autocomplete="off" />
+      <button class="search-clear" id="library-search-clear" aria-label="Clear search" hidden>✕</button>
+    </div>
     <div class="library" id="library"></div>
+  </section>
+
+  <!-- ===== Steel Codex ===== -->
+  <section class="section wrap" id="steel-section">
+    <div class="section-head">
+      <div>
+        <div class="kicker">The Forge</div>
+        <h3>The Steel Codex</h3>
+      </div>
+      <p>The metal makes the knife. Tap any steel to see its edge retention, toughness, sharpening ease, and corrosion resistance.</p>
+    </div>
+    <div class="codex-search">
+      <span class="search-ic" aria-hidden="true">🔍</span>
+      <input type="search" id="steel-search" class="search-input" placeholder="Search steels by name or type…" aria-label="Search the Steel Codex" autocomplete="off" />
+      <button class="search-clear" id="steel-search-clear" aria-label="Clear search" hidden>✕</button>
+    </div>
+    <div class="steel-grid" id="steel-grid"></div>
   </section>
 
   <!-- ===== Compare ===== -->
@@ -127,17 +178,140 @@
   </section>
 
   <!-- ===== Dojo / Quiz ===== -->
+  </section><!-- /view-codex -->
+
+  <!-- ===== DOJO VIEW ===== -->
+  <section class="view" id="view-dojo" data-view="dojo" hidden>
+
+  <!-- ===== Daily Dojo ===== -->
+  <section class="section wrap" id="daily-section">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Daily Ritual</div>
+        <h3>Daily Dojo</h3>
+      </div>
+      <p>Five fresh questions every day. Keep your streak alive and earn a completion bonus.</p>
+    </div>
+    <div class="daily-card" id="daily-dojo"><!-- injected by JS --></div>
+  </section>
+
+  <!-- ===== Dojo / Quiz ===== -->
   <section class="section wrap" id="dojo">
     <div class="dojo">
       <div class="kicker">Chapter 03</div>
       <h3>The Dojo</h3>
-      <p class="dojo-sub">Match knives to tasks, whetstone grits to jobs, and master knife care. Earn XP and climb the ranks.</p>
+      <p class="dojo-sub">Match knives to tasks, choose the right steel, master sharpening and knife care. Earn XP and climb the ranks.</p>
 
       <div class="quiz-stage" id="quiz-stage">
         <!-- injected by JS -->
       </div>
     </div>
   </section>
+
+  </section><!-- /view-dojo -->
+
+  <!-- ===== LEARN VIEW ===== -->
+  <section class="view" id="view-learn" data-view="learn" hidden>
+
+    <!-- Find My Knife wizard -->
+    <section class="section wrap" id="wizard-section">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Guided</div>
+          <h3>Find My Knife</h3>
+        </div>
+        <p>Answer four quick questions and we'll recommend the knife that best fits how you cook.</p>
+      </div>
+      <div class="tool-card" id="wizard"><!-- injected by JS --></div>
+    </section>
+
+    <!-- Fix My Knife assistant -->
+    <section class="section wrap" id="fixit-section">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Maintenance</div>
+          <h3>Fix My Knife</h3>
+        </div>
+        <p>Tell us what's wrong and we'll suggest a sharpening or repair process — with warnings where a pro is safer.</p>
+      </div>
+      <div class="tool-card" id="fixit"><!-- injected by JS --></div>
+    </section>
+
+    <!-- Knife anatomy -->
+    <section class="section wrap" id="anatomy-section">
+      <div class="section-head">
+        <div>
+          <div class="kicker">The Blade</div>
+          <h3>Knife Anatomy</h3>
+        </div>
+        <p>Tap a labelled part of the blade to learn what it does.</p>
+      </div>
+      <div class="anatomy" id="anatomy"><!-- injected by JS --></div>
+    </section>
+
+    <!-- Knife vs Knife -->
+    <section class="section wrap" id="vs-section">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Head to Head</div>
+          <h3>Knife vs Knife</h3>
+        </div>
+        <p>Pick any two knives to compare their strengths side by side.</p>
+      </div>
+      <div class="vs" id="vs"><!-- injected by JS --></div>
+    </section>
+
+  </section><!-- /view-learn -->
+
+  <!-- ===== PROFILE VIEW ===== -->
+  <section class="view" id="view-profile" data-view="profile" hidden>
+
+    <section class="section wrap">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Your Dojo</div>
+          <h3>Profile</h3>
+        </div>
+        <p>Your rank, collection, and Dojo record — all saved on this device.</p>
+      </div>
+      <div class="profile" id="profile"><!-- injected by JS --></div>
+    </section>
+
+    <section class="section wrap" id="achievements-section">
+      <div class="section-head sub">
+        <div>
+          <div class="kicker">Milestones</div>
+          <h3>Achievements</h3>
+        </div>
+      </div>
+      <div class="ach-grid" id="achievements"><!-- injected by JS --></div>
+    </section>
+
+    <section class="section wrap" id="roll-section">
+      <div class="section-head sub">
+        <div>
+          <div class="kicker">My Kitchen</div>
+          <h3>My Knife Roll</h3>
+        </div>
+        <p>Knives you own. Open any Codex knife to mark it as owned and record its details.</p>
+      </div>
+      <div class="roll" id="knife-roll"><!-- injected by JS --></div>
+    </section>
+
+    <section class="section wrap" id="ranks-section">
+      <div class="section-head sub">
+        <div>
+          <div class="kicker">The Path</div>
+          <h3>Ranks</h3>
+        </div>
+      </div>
+      <div class="ranks-next" id="ranks-next"></div>
+      <div class="ranks-list" id="ranks-list"></div>
+    </section>
+
+  </section><!-- /view-profile -->
+
+  </main>
 
   <footer class="foot wrap">
     <div class="divider"></div>
@@ -150,6 +324,7 @@
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-hero">
         <button class="close" id="modal-close" aria-label="Close">✕</button>
+        <div class="m-discovery" id="m-discovery" aria-hidden="true">✦ New Discovery</div>
         <div class="m-emoji" id="m-emoji">🔪</div>
         <h3 id="m-name">Knife <span class="kanji" id="m-kanji"></span></h3>
         <div class="m-role" id="m-role"></div>
@@ -164,8 +339,13 @@
         </div>
 
         <div class="detail-block">
-          <div class="d-title">Best For</div>
+          <div class="d-title" id="m-best-title">Best Uses</div>
           <div class="tag-list" id="m-best"></div>
+        </div>
+
+        <div class="detail-block knife-only" id="block-techniques">
+          <div class="d-title">Cutting Techniques</div>
+          <div class="tag-list" id="m-techniques"></div>
         </div>
 
         <div class="detail-block">
@@ -174,8 +354,54 @@
         </div>
 
         <div class="detail-block">
-          <div class="d-title">Specs</div>
+          <div class="d-title" id="m-specs-title">Specs</div>
           <div id="m-specs"></div>
+        </div>
+
+        <div class="detail-block knife-only" id="block-geometry">
+          <div class="d-title">Blade Geometry</div>
+          <p class="d-text" id="m-geometry"></p>
+        </div>
+
+        <div class="detail-block knife-only" id="block-steels">
+          <div class="d-title">Recommended Steels</div>
+          <div class="tag-list" id="m-steels"></div>
+        </div>
+
+        <div class="detail-block knife-only" id="block-care">
+          <div class="d-title">Care</div>
+          <ul class="care-list" id="m-care"></ul>
+        </div>
+
+        <div class="detail-block knife-only" id="block-history">
+          <div class="d-title">History</div>
+          <p class="d-text" id="m-history"></p>
+        </div>
+
+        <div class="detail-block knife-only" id="block-similar">
+          <div class="d-title">Similar Knives</div>
+          <div class="similar-list" id="m-similar"></div>
+        </div>
+
+        <div class="detail-block knife-only own-block" id="block-own">
+          <div class="d-title own-head">
+            <span>My Knife Roll</span>
+            <label class="own-toggle">
+              <input type="checkbox" id="m-own" />
+              <span class="own-toggle-tx">I own this knife</span>
+            </label>
+          </div>
+          <div class="own-form" id="m-own-form" hidden>
+            <div class="own-grid">
+              <label>Blade length<input type="text" id="own-length" placeholder="e.g. 210 mm" autocomplete="off" /></label>
+              <label>Steel<input type="text" id="own-steel" placeholder="e.g. VG10" autocomplete="off" /></label>
+              <label>Maker<input type="text" id="own-maker" placeholder="e.g. Tojiro" autocomplete="off" /></label>
+              <label>Sharpening angle<input type="text" id="own-angle" placeholder="e.g. 15\u00b0 per side" autocomplete="off" /></label>
+              <label>Last sharpened<input type="date" id="own-sharpened" /></label>
+            </div>
+            <label class="own-notes">Notes<textarea id="own-notes" rows="2" placeholder="Personal notes…"></textarea></label>
+            <div class="own-saved" id="own-saved" aria-live="polite"></div>
+          </div>
         </div>
 
         <div class="tip-box">
@@ -186,21 +412,11 @@
     </div>
   </div>
 
-  <!-- ===== Ranks ===== -->
-  <div class="modal-back ranks-back" id="ranks-back">
-    <div class="ranks-modal" role="dialog" aria-modal="true" aria-label="Ranks">
-      <div class="ranks-head">
-        <h3>Ranks</h3>
-        <button class="close" id="ranks-close" aria-label="Close">✕</button>
-      </div>
-      <div class="ranks-next" id="ranks-next"></div>
-      <div class="ranks-list" id="ranks-list"></div>
-    </div>
-  </div>
-
   <div class="toast-zone" id="toast-zone"></div>
+  <div class="ach-zone" id="ach-zone"></div>
 
   <script src="knives-data.js"></script>
+  <script src="codex-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

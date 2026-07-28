@@ -23,18 +23,34 @@ const GRIT_LABEL = {
 };
 
 const RANKS = [
-  { min: 0,   name: 'Apprentice',  emoji: '🌱' },
-  { min: 120, name: 'Line Cook',   emoji: '🍳' },
-  { min: 280, name: 'Sous Chef',   emoji: '🔪' },
-  { min: 480, name: 'Head Chef',   emoji: '👨‍🍳' },
-  { min: 720, name: 'Itamae',      emoji: '🍣' },
-  { min: 1000, name: 'Knife Master', emoji: '🏯' }
+  { min: 0,    name: 'Apprentice',     emoji: '🌱' },
+  { min: 100,  name: 'Prep Cook',      emoji: '🥢' },
+  { min: 220,  name: 'Line Cook',      emoji: '🍳' },
+  { min: 360,  name: 'Chef de Partie', emoji: '🍥' },
+  { min: 520,  name: 'Sous Chef',      emoji: '🔪' },
+  { min: 700,  name: 'Head Chef',      emoji: '👨‍🍳' },
+  { min: 900,  name: 'Executive Chef', emoji: '🎌' },
+  { min: 1150, name: 'Itamae',         emoji: '🍣' },
+  { min: 1450, name: 'Shokunin',       emoji: '🏮' },
+  { min: 1800, name: 'Knife Master',   emoji: '🏯' }
 ];
+
+/* Higher-rarity blades stay hidden as silhouettes in the Codex until the user
+   inspects them for the first time. */
+const SPECIALIST_RARITIES = new Set(['rare', 'epic']);
+
+/* Extended reference data (steels, anatomy, matrix, achievements, wizard,
+   fix-it processes, steel quiz). Loaded from codex-data.js. */
+const CD = window.CODEX_DATA || {};
 
 const STORE_KEY = 'yjk-progress-v1';
 
 // How many questions are drawn (at random) from the pool each round.
 const QUIZ_LENGTH = 12;
+// The Daily Dojo is always exactly this many questions.
+const DAILY_LENGTH = 5;
+// XP bonus for finishing all five Daily Dojo questions.
+const DAILY_BONUS = 25;
 
 const state = {
   knives: [],
@@ -43,16 +59,44 @@ const state = {
   byId: {},
   stones: [],        // whetstone grit tiers
   stoneById: {},
+  steels: [],        // Steel Codex entries
+  steelById: {},
   filter: 'all',
+  view: 'home',      // active top-level view
+  search: '',        // Codex grid search query
+  librarySearch: '', // Greater Codex archive search query
+  steelSearch: '',   // Steel Codex search query
   collected: new Set(),
   readStones: new Set(),   // whetstone tiers whose detail was opened
   readLibrary: new Set(),  // Greater Codex families that were expanded
+  steelsRead: new Set(),   // steels whose detail was opened
+  roll: {},                // My Knife Roll: id -> { owned, length, steel, ... }
+  achievements: new Set(), // unlocked achievement ids
   xp: 0,
   seenQuiz: new Set(),   // scenarios already shown in the Dojo
   quizIndex: 0,
   quizScore: 0,
-  quizActive: false
+  quizActive: false,
+  quizIsDaily: false,    // whether the current run is the Daily Dojo
+  dojoMode: 'all',   // Dojo training focus: all | knife | steel | sharpening | care
+  curStreak: 0,      // consecutive correct answers in the current run
+  // Lifetime Dojo statistics (persisted).
+  dojo: { rounds: 0, answered: 0, correct: 0, best: 0, perfect: 0, bestStreak: 0 },
+  // Daily Dojo tracking (persisted).
+  daily: { date: '', done: false, score: 0, streak: 0, lastDate: '' },
+  modalId: null,     // id of the knife currently shown in the detail modal
+  modalKind: null    // 'knife' | 'stone' | 'steel'
 };
+
+/* Local calendar date as YYYY-MM-DD (used to seed and gate the Daily Dojo). */
+function todayKey(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function yesterdayKey() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return todayKey(d);
+}
 
 /* ---------- Persistence ---------- */
 function loadProgress() {
@@ -64,7 +108,13 @@ function loadProgress() {
     state.collected = new Set(data.collected || []);
     state.readStones = new Set(data.readStones || []);
     state.readLibrary = new Set(data.readLibrary || []);
+    state.steelsRead = new Set(data.steelsRead || []);
+    state.roll = data.roll || {};
+    state.achievements = new Set(data.achievements || []);
     state.seenQuiz = new Set(data.seenQuiz || []);
+    if (data.dojo) state.dojo = { ...state.dojo, ...data.dojo };
+    if (data.daily) state.daily = { ...state.daily, ...data.daily };
+    if (data.dojoMode) state.dojoMode = data.dojoMode;
   } catch (e) { /* ignore corrupt store */ }
 }
 function saveProgress() {
@@ -74,7 +124,13 @@ function saveProgress() {
       collected: [...state.collected],
       readStones: [...state.readStones],
       readLibrary: [...state.readLibrary],
-      seenQuiz: [...state.seenQuiz]
+      steelsRead: [...state.steelsRead],
+      roll: state.roll,
+      achievements: [...state.achievements],
+      seenQuiz: [...state.seenQuiz],
+      dojo: state.dojo,
+      daily: state.daily,
+      dojoMode: state.dojoMode
     }));
   } catch (e) { /* storage may be unavailable */ }
 }
@@ -82,6 +138,36 @@ function saveProgress() {
 /* ---------- Helpers ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+/* Escape user-supplied text before placing it in innerHTML. */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* Flatten a knife's searchable fields into one lowercase string. */
+function knifeSearchText(k) {
+  return [
+    k.name, k.kanji, k.translation, k.role, k.purpose, k.edge, k.profile,
+    ...(k.bestFor || []), ...(k.avoid || []), ...(k.techniques || []), ...(k.steels || [])
+  ].join(' ').toLowerCase();
+}
+
+/* Care-topic keywords used to split the non-knife questions between the
+   Sharpening and Care focuses. */
+const CARE_RE = /wash|dishwasher|\bstore\b|storage|saya|cutting surface|cutting board|\bboard\b|patina|rust|\boil\b|camellia|tsubaki|drawer|magnetic|granite|glass, stone|dry it|hand wash/i;
+
+/* Classify a Dojo question into one of the four focuses:
+   knife (knife-id options), steel (tagged), care (upkeep/storage), else
+   sharpening (grits, strops, angles, workflow). */
+function quizCategory(q) {
+  if (q.cat) return q.cat;
+  const opts = q.options || [];
+  if (opts.some(o => state.byId[o])) return 'knife';
+  const text = `${q.scenario} ${q.answer || ''}`.toLowerCase();
+  if (CARE_RE.test(text)) return 'care';
+  return 'sharpening';
+}
 
 /* Fisher–Yates shuffle (returns a new array). */
 function shuffle(arr) {
@@ -186,16 +272,62 @@ function updateHud() {
   $('#hud-xp-fill').style.width = pct + '%';
 }
 
-/* ---------- Ranks modal ---------- */
-function renderRanks() {
+/* ---------- Profile view ---------- */
+function renderProfile() {
   const current = rankFor(state.xp);
   const nxt = nextRank(state.xp);
 
-  $('#ranks-next').innerHTML = nxt
+  // Progress toward the next rank (mirrors the HUD bar).
+  let pct = 100;
+  let progressLabel = 'Top rank reached — the codex is yours. 🎉';
+  if (nxt) {
+    const span = nxt.min - current.min;
+    pct = Math.min(100, Math.round(((state.xp - current.min) / span) * 100));
+    progressLabel = `${nxt.min - state.xp} XP to ${nxt.emoji} ${nxt.name}`;
+  }
+
+  const total = state.knives.length;
+  const found = state.collected.size;
+  const steelTotal = state.steels.length;
+  const steelFound = state.steelsRead.size;
+  const d = state.dojo;
+  const accuracy = d.answered ? Math.round((d.correct / d.answered) * 100) : 0;
+  const achCount = state.achievements.size;
+  const achTotal = (CD.achievements || []).length;
+  const rankIndex = RANKS.indexOf(current) + 1;
+
+  const profile = $('#profile');
+  if (profile) profile.innerHTML = `
+    <div class="profile-rank">
+      <span class="profile-rank-em">${current.emoji}</span>
+      <div class="profile-rank-text">
+        <div class="profile-rank-name">${current.name} <span class="profile-lvl">· Level ${rankIndex}</span></div>
+        <div class="profile-xp">${state.xp} XP earned</div>
+      </div>
+    </div>
+    <div class="profile-progress">
+      <div class="profile-progress-track"><i style="width:${pct}%"></i></div>
+      <div class="profile-progress-label">${progressLabel}</div>
+    </div>
+    <div class="profile-stats">
+      <div class="pstat"><div class="pstat-value">${found}<span class="pstat-sub">/${total}</span></div><div class="pstat-label">Knives Found</div></div>
+      <div class="pstat"><div class="pstat-value">${steelFound}<span class="pstat-sub">/${steelTotal}</span></div><div class="pstat-label">Steels Studied</div></div>
+      <div class="pstat"><div class="pstat-value">${accuracy}<span class="pstat-sub">%</span></div><div class="pstat-label">Dojo Accuracy</div></div>
+      <div class="pstat"><div class="pstat-value">${d.rounds}</div><div class="pstat-label">Dojo Rounds</div></div>
+      <div class="pstat"><div class="pstat-value">${state.daily.streak || 0}<span class="pstat-sub"> 🔥</span></div><div class="pstat-label">Daily Streak</div></div>
+      <div class="pstat"><div class="pstat-value">${d.best}</div><div class="pstat-label">Best Round</div></div>
+      <div class="pstat"><div class="pstat-value">${d.bestStreak}<span class="pstat-sub"> 🔥</span></div><div class="pstat-label">Best Streak</div></div>
+      <div class="pstat"><div class="pstat-value">${d.perfect}</div><div class="pstat-label">Perfect Runs</div></div>
+      <div class="pstat"><div class="pstat-value">${achCount}<span class="pstat-sub">/${achTotal}</span></div><div class="pstat-label">Achievements</div></div>
+    </div>`;
+
+  const rn = $('#ranks-next');
+  if (rn) rn.innerHTML = nxt
     ? `Next rank is <b>${nxt.emoji} ${nxt.name}</b> — <b>${nxt.min - state.xp}</b> XP to go.`
     : `You've reached the top rank — <b>${current.emoji} ${current.name}</b>. 🎉`;
 
-  $('#ranks-list').innerHTML = RANKS.map(r => {
+  const rl = $('#ranks-list');
+  if (rl) rl.innerHTML = RANKS.map(r => {
     const achieved = state.xp >= r.min;
     const isCurrent = r.name === current.name;
     const cls = ['rank-row', achieved ? 'achieved' : '', isCurrent ? 'current' : ''].join(' ').trim();
@@ -207,17 +339,9 @@ function renderRanks() {
         ${isCurrent ? '<span class="rank-tag">You</span>' : (achieved ? '<span class="rank-check">✓</span>' : '')}
       </div>`;
   }).join('');
-}
 
-function openRanks() {
-  renderRanks();
-  $('#ranks-back').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeRanks() {
-  $('#ranks-back').classList.remove('open');
-  document.body.style.overflow = '';
+  renderAchievements();
+  renderRoll();
 }
 
 /* ---------- Codex ---------- */
@@ -239,13 +363,42 @@ function renderFilters() {
 
 function renderGrid() {
   const grid = $('#knife-grid');
-  const list = state.filter === 'all'
+  const q = state.search.trim().toLowerCase();
+  let list = state.filter === 'all'
     ? state.knives
     : state.knives.filter(k => k.rarity === state.filter);
+  if (q) list = list.filter(k => knifeSearchText(k).includes(q));
+
+  if (!list.length) {
+    grid.innerHTML = q
+      ? `<p class="empty-state">No knives match <b>“${escapeHtml(state.search.trim())}”</b>. Try another term.</p>`
+      : `<p class="empty-state">No knives in this filter.</p>`;
+    return;
+  }
 
   grid.innerHTML = list.map((k, i) => {
     const collected = state.collected.has(k.id);
     const color = `var(--rarity-${k.rarity})`;
+    const locked = !collected && SPECIALIST_RARITIES.has(k.rarity);
+
+    if (locked) {
+      return `
+      <article class="knife-card locked" data-id="${k.id}" style="animation-delay:${i * 55}ms" title="Undiscovered — tap to reveal">
+        <span class="rarity-bar" style="background:${color}"></span>
+        <div class="top">
+          <span class="emoji">${k.emoji}</span>
+          <span class="rarity-tag" style="background:${color}">${RARITY_LABEL[k.rarity]}</span>
+        </div>
+        <h4 class="locked-name">Undiscovered <span class="kanji">秘</span></h4>
+        <div class="role">A specialist blade awaits</div>
+        <p class="desc">Tap to inspect this blade and add it to your codex.</p>
+        <div class="meta">
+          <span class="lock-hint">🔒 Locked</span>
+          <span>? ? ?</span>
+        </div>
+      </article>`;
+    }
+
     return `
       <article class="knife-card ${collected ? 'collected' : ''}" data-id="${k.id}" style="animation-delay:${i * 55}ms">
         <span class="rarity-bar" style="background:${color}"></span>
@@ -302,9 +455,35 @@ function renderStoneCompare() {
 }
 
 /* ---------- Modal ---------- */
+/* Show or hide the knife-only detail blocks (techniques, geometry, steels,
+   care, history, similar). Stones reuse the same modal without these. */
+function setKnifeOnly(visible) {
+  $$('.knife-only').forEach(el => { el.style.display = visible ? '' : 'none'; });
+}
+
+/* A chip linking to a related knife. Undiscovered specialists stay hidden as
+   a locked chip until inspected, but can still be tapped to reveal them. */
+function similarChip(id) {
+  const k = state.byId[id];
+  if (!k) return '';
+  const hidden = !state.collected.has(id) && SPECIALIST_RARITIES.has(k.rarity);
+  if (hidden) {
+    return `<button class="similar-chip locked" data-jump="${id}" title="Undiscovered">
+      <span class="em">🔒</span><span>? ? ?</span></button>`;
+  }
+  return `<button class="similar-chip" data-jump="${id}">
+    <span class="em">${k.emoji}</span><span>${k.name}</span></button>`;
+}
+
 function openModal(id) {
   const k = state.byId[id];
   if (!k) return;
+
+  const isNew = !state.collected.has(id);
+
+  setKnifeOnly(true);
+  $('#m-best-title').textContent = 'Best Uses';
+  $('#m-specs-title').textContent = 'Specs';
 
   $('#m-emoji').textContent = k.emoji;
   $('#m-name').innerHTML = `${k.name} <span class="kanji">${k.kanji}</span>`;
@@ -319,15 +498,41 @@ function openModal(id) {
     </div>`).join('');
 
   $('#m-best').innerHTML = k.bestFor.map(t => `<span class="tag">${t}</span>`).join('');
+  $('#m-techniques').innerHTML = (k.techniques || []).map(t => `<span class="tag">${t}</span>`).join('');
   $('#m-avoid').innerHTML = k.avoid.map(t => `<span class="tag">${t}</span>`).join('');
 
   $('#m-specs').innerHTML = `
-    <div class="spec-row"><span class="k">Knife length</span><span class="v">${k.bladeLength}</span></div>
+    <div class="spec-row"><span class="k">Typical size</span><span class="v">${k.bladeLength}</span></div>
     <div class="spec-row"><span class="k">Edge type</span><span class="v">${k.edge}</span></div>
     <div class="spec-row"><span class="k">Profile</span><span class="v">${k.profile}</span></div>
     <div class="spec-row"><span class="k">Difficulty</span><span class="v">${diffDots(k.difficulty)}</span></div>`;
 
+  $('#m-geometry').textContent = k.geometry || '';
+  $('#m-steels').innerHTML = (k.steels || []).map(s => `<span class="tag">${s}</span>`).join('');
+  $('#m-care').innerHTML = (k.care || []).map(c => `<li>${c}</li>`).join('');
+  $('#m-history').textContent = k.history || '';
+
+  const similar = (k.similar || []).map(similarChip).filter(Boolean).join('');
+  $('#m-similar').innerHTML = similar;
+  $('#block-similar').style.display = similar ? '' : 'none';
+  $$('#m-similar .similar-chip').forEach(btn => {
+    btn.addEventListener('click', () => openModal(btn.dataset.jump));
+  });
+
   $('#m-tip').textContent = k.tip;
+
+  // Restore the shared "Not Ideal For" block (steel view hides it).
+  $('#m-avoid').closest('.detail-block').style.display = '';
+
+  // My Knife Roll ownership controls.
+  state.modalId = id;
+  state.modalKind = 'knife';
+  bindOwnership(id);
+
+  // Discovery flourish only on a knife's first inspection.
+  const modal = $('#modal-back .modal');
+  modal.classList.toggle('discovered', isNew);
+  $('#m-discovery').style.display = isNew ? '' : 'none';
 
   $('#modal-back').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -338,11 +543,13 @@ function openModal(id) {
   });
 
   // first discovery reward
-  if (!state.collected.has(id)) {
+  if (isNew) {
     state.collected.add(id);
     saveProgress();
     addXp(15, `Discovered the ${k.name}`);
     renderGrid();
+    checkAchievements();
+    renderDashboard();
     if (state.collected.size === state.knives.length) {
       setTimeout(() => toast('🏯 Codex complete — every knife collected!'), 400);
     }
@@ -360,6 +567,12 @@ function openStoneModal(id) {
   const s = state.stoneById[id];
   if (!s) return;
 
+  setKnifeOnly(false);
+  $('#m-discovery').style.display = 'none';
+  $('#modal-back .modal').classList.remove('discovered');
+  $('#m-best-title').textContent = 'Best For';
+  $('#m-specs-title').textContent = 'Specs';
+
   $('#m-emoji').textContent = s.emoji;
   $('#m-name').innerHTML = `${s.name} <span class="kanji">${s.kanji}</span>`;
   $('#m-role').textContent = s.role;
@@ -374,6 +587,8 @@ function openStoneModal(id) {
 
   $('#m-best').innerHTML = s.bestFor.map(t => `<span class="tag">${t}</span>`).join('');
   $('#m-avoid').innerHTML = s.avoid.map(t => `<span class="tag">${t}</span>`).join('');
+  // A steel view may have hidden the shared avoid block — restore it.
+  $('#m-avoid').closest('.detail-block').style.display = '';
 
   $('#m-specs').innerHTML = `
     <div class="spec-row"><span class="k">Grit range</span><span class="v">${s.grit}</span></div>
@@ -386,6 +601,9 @@ function openStoneModal(id) {
 
   $('#modal-back').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  state.modalId = id;
+  state.modalKind = 'stone';
 
   requestAnimationFrame(() => {
     $$('#m-stats .s-bar i').forEach(bar => { bar.style.width = bar.dataset.w + '%'; });
@@ -400,13 +618,29 @@ function openStoneModal(id) {
 }
 
 /* ---------- Dojo / Quiz ---------- */
+const DOJO_MODES = [
+  { id: 'all',        label: 'All' },
+  { id: 'knife',      label: '🔪 Knives' },
+  { id: 'steel',      label: '🔩 Steel' },
+  { id: 'sharpening', label: '🪨 Sharpening' },
+  { id: 'care',       label: '🧼 Care' }
+];
+
+/* Questions available for a given training focus. */
+function poolForMode(mode) {
+  return state.quiz.filter(q => mode === 'all' || quizCategory(q) === mode);
+}
+
 function startQuiz() {
-  // Only draw questions not seen in previous training rounds.
-  let unseen = state.quiz.filter(q => !state.seenQuiz.has(q.scenario));
-  // Once every question has been seen, reset the pool so training can continue.
+  const mode = state.dojoMode || 'all';
+  const modePool = poolForMode(mode);
+
+  // Only draw questions not seen in previous rounds of this focus.
+  let unseen = modePool.filter(q => !state.seenQuiz.has(q.scenario));
+  // Once every question in the focus has been seen, reset just that focus.
   if (unseen.length === 0) {
-    state.seenQuiz.clear();
-    unseen = state.quiz.slice();
+    modePool.forEach(q => state.seenQuiz.delete(q.scenario));
+    unseen = modePool.slice();
   }
   const pool = shuffle(unseen).slice(0, Math.min(QUIZ_LENGTH, unseen.length));
   state.round = pool.map(q => ({ ...q, options: shuffle(q.options) }));
@@ -415,9 +649,95 @@ function startQuiz() {
 
   state.quizIndex = 0;
   state.quizScore = 0;
+  state.curStreak = 0;
   state.quizActive = true;
+  state.quizIsDaily = false;
   renderQuestion();
   $('#dojo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- Daily Dojo ----------
+   Five questions, deterministic per calendar day (a date-seeded shuffle so the
+   same five appear all day). Completing all five keeps a daily streak alive. */
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  let s = seed >>> 0;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function dateSeed(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h;
+}
+function dailyQuestions() {
+  const key = todayKey();
+  return seededShuffle(state.quiz, dateSeed(key)).slice(0, DAILY_LENGTH);
+}
+
+function renderDaily() {
+  const box = $('#daily-dojo');
+  if (!box) return;
+  const today = todayKey();
+  const doneToday = state.daily.done && state.daily.date === today;
+  const streak = state.daily.streak || 0;
+
+  if (doneToday) {
+    box.innerHTML = `
+      <div class="daily-done">
+        <div class="daily-check">✓</div>
+        <div>
+          <h4>Today's Daily Dojo is complete</h4>
+          <p>You scored <b>${state.daily.score}</b> / ${DAILY_LENGTH}. Come back tomorrow to extend your streak.</p>
+        </div>
+        <div class="daily-streak" title="Current streak">🔥 ${streak}</div>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="daily-open">
+      <div class="daily-streak" title="Current streak">🔥 ${streak}</div>
+      <div class="daily-copy">
+        <h4>Five questions. One a day.</h4>
+        <p>Finish all ${DAILY_LENGTH} to earn a <b>+${DAILY_BONUS} XP</b> bonus and keep your streak alive.</p>
+      </div>
+      <button class="btn" id="daily-start">Start Daily Dojo</button>
+    </div>`;
+  $('#daily-start').addEventListener('click', startDaily);
+}
+
+function startDaily() {
+  const pool = dailyQuestions();
+  state.round = pool.map(q => ({ ...q, options: shuffle(q.options) }));
+  state.quizIndex = 0;
+  state.quizScore = 0;
+  state.curStreak = 0;
+  state.quizActive = true;
+  state.quizIsDaily = true;
+  renderQuestion();
+  $('#dojo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* A subtle "on a roll" badge shown once two answers land in a row. */
+function streakBadge() {
+  return state.curStreak >= 2 ? ` <span class="quiz-streak">· 🔥 ${state.curStreak}</span>` : '';
+}
+
+/* A short educational takeaway shown after every answer. */
+function explainQuestion(q) {
+  if (q.why) return q.why;
+  const cat = quizCategory(q);
+  const correct = acceptedAnswers(q)[0];
+  if (cat === 'knife') {
+    const k = state.byId[correct];
+    if (k) return k.tip || k.purpose;
+  }
+  return `Remember: ${optionMeta(correct).label}.`;
 }
 
 function renderQuestion() {
@@ -449,7 +769,7 @@ function renderQuestion() {
     <div class="answers" id="answers">${options}</div>
     <div class="quiz-feedback" id="quiz-feedback"></div>
     <div class="quiz-foot">
-      <span class="quiz-score">Score: <b>${state.quizScore}</b> / ${total}</span>
+      <span class="quiz-score">Score: <b>${state.quizScore}</b> / ${total}${streakBadge()}</span>
       <button class="btn ghost small" id="quiz-skip">Skip</button>
     </div>`;
 
@@ -468,30 +788,45 @@ function answerQuestion(chosenBtn) {
   const isCorrect = chosenBtn.dataset.correct === 'true';
   const feedback = $('#quiz-feedback');
 
+  // Track lifetime Dojo accuracy and the correct-answer streak.
+  state.dojo.answered++;
+  if (isCorrect) {
+    state.dojo.correct++;
+    state.curStreak++;
+    if (state.curStreak > state.dojo.bestStreak) state.dojo.bestStreak = state.curStreak;
+  } else {
+    state.curStreak = 0;
+  }
+  saveProgress();
+
   // Reveal every acceptable answer in green.
   buttons.forEach(b => { if (b.dataset.correct === 'true') b.classList.add('correct'); });
 
   const correctLabels = accepted.map(a => optionMeta(a).label);
+  const explanation = explainQuestion(q);
 
+  let head;
   if (isCorrect) {
     state.quizScore++;
-    feedback.className = 'quiz-feedback';
-    feedback.textContent = accepted.length > 1
+    head = accepted.length > 1
       ? `✓ Correct — ${formatList(correctLabels, 'and')} all work here.`
       : `✓ Correct — ${correctLabels[0]} is the right answer.`;
     addXp(9, 'Correct answer');
   } else {
     chosenBtn.classList.add('wrong');
-    feedback.className = 'quiz-feedback miss';
-    feedback.textContent = accepted.length > 1
+    head = accepted.length > 1
       ? `✗ Any of ${formatList(correctLabels, 'or')} works here.`
       : `✗ The right answer is ${correctLabels[0]}.`;
   }
+  feedback.className = 'quiz-feedback' + (isCorrect ? '' : ' miss');
+  feedback.innerHTML =
+    `<span class="qf-head">${escapeHtml(head)}</span>` +
+    `<span class="qf-why">💡 ${escapeHtml(explanation)}</span>`;
 
   const foot = $('.quiz-foot');
   const isLast = state.quizIndex === state.round.length - 1;
   foot.innerHTML = `
-    <span class="quiz-score">Score: <b>${state.quizScore}</b> / ${state.round.length}</span>
+    <span class="quiz-score">Score: <b>${state.quizScore}</b> / ${state.round.length}${streakBadge()}</span>
     <button class="btn small" id="quiz-next">${isLast ? 'See Result' : 'Next Task'}</button>`;
   $('#quiz-next').addEventListener('click', nextQuestion);
 }
@@ -510,33 +845,88 @@ function finishQuiz() {
   const total = state.round.length;
   const score = state.quizScore;
   const pct = total ? score / total : 0;
+  const isDaily = state.quizIsDaily;
+
+  // Record the round in lifetime Dojo statistics.
+  state.dojo.rounds++;
+  if (score > state.dojo.best) state.dojo.best = score;
+  if (pct === 1) state.dojo.perfect++;
+
+  let bonusNote = '';
+  if (isDaily) {
+    // Mark today's Daily Dojo complete and update the streak.
+    const today = todayKey();
+    state.daily.date = today;
+    state.daily.score = score;
+    if (!state.daily.done) {
+      state.daily.done = true;
+      // Continue the streak if yesterday was completed, otherwise restart.
+      state.daily.streak = (state.daily.lastDate === yesterdayKey())
+        ? (state.daily.streak || 0) + 1
+        : 1;
+      state.daily.lastDate = today;
+      addXp(DAILY_BONUS, 'Daily Dojo complete');
+      bonusNote = `<br />+${DAILY_BONUS} XP daily bonus · 🔥 ${state.daily.streak}-day streak`;
+    }
+  }
+  if (pct === 1) addXp(12, 'Perfect round');
+  saveProgress();
+  checkAchievements();
 
   let title, emoji, note;
-  if (pct === 1) { title = 'Flawless — Itamae!'; emoji = '🏯'; note = 'A perfect run across knives and stones.'; }
+  if (pct === 1) { title = 'Flawless — Itamae!'; emoji = '🏯'; note = 'A perfect run.'; }
   else if (pct >= 0.75) { title = 'Sharp instincts.'; emoji = '🍣'; note = 'A confident grasp of the codex.'; }
   else if (pct >= 0.5) { title = 'Coming along.'; emoji = '🔪'; note = 'Solid basics — a little more practice.'; }
   else { title = 'Keep training.'; emoji = '🌱'; note = 'Revisit the codex and try again.'; }
 
-  if (pct === 1) addXp(12, 'Perfect round');
+  const modeLabel = isDaily
+    ? 'the Daily Dojo'
+    : (DOJO_MODES.find(m => m.id === (state.dojoMode || 'all')) || DOJO_MODES[0]).label;
 
   $('#quiz-stage').innerHTML = `
     <div class="quiz-result">
       <div class="rank-emoji">${emoji}</div>
       <h4>${title}</h4>
-      <p>${note}<br />You scored <b>${score}</b> of <b>${total}</b>.</p>
-      <button class="btn" id="quiz-restart">Train Again</button>
+      <p>${note}<br />You scored <b>${score}</b> of <b>${total}</b> in <b>${modeLabel}</b>.${bonusNote}</p>
+      <div class="quiz-result-actions">
+        <button class="btn" id="quiz-restart">Train Again</button>
+        <button class="btn ghost" id="quiz-change">Change Focus</button>
+      </div>
     </div>`;
   $('#quiz-restart').addEventListener('click', startQuiz);
+  $('#quiz-change').addEventListener('click', renderDojoIntro);
+
+  renderDaily();
+  renderDashboard();
 }
 
 function renderDojoIntro() {
+  const mode = state.dojoMode || 'all';
+  const modes = DOJO_MODES.map(m => {
+    const count = poolForMode(m.id).length;
+    return `<button class="dojo-mode-chip ${m.id === mode ? 'active' : ''}" data-mode="${m.id}">${m.label}<span class="m-count">${count}</span></button>`;
+  }).join('');
+  const focusNote = mode === 'knives' ? 'matching knives to the right task'
+    : mode === 'stones' ? 'whetstone grits and sharpening stages'
+    : mode === 'care' ? 'stropping, storage, and knife care'
+    : 'knives, whetstone grits, strops, and knife care';
+
   $('#quiz-stage').innerHTML = `
     <div class="quiz-result">
       <div class="rank-emoji">🥢</div>
       <h4>Ready to test your eye?</h4>
-      <p>${QUIZ_LENGTH} random tasks each run — knives, whetstone grits, strops, and knife care. Answers earn XP and rank you up.</p>
+      <p>Choose a focus, then take on up to ${QUIZ_LENGTH} tasks on ${focusNote}. Answers earn XP and rank you up.</p>
+      <div class="dojo-modes" id="dojo-modes">${modes}</div>
       <button class="btn" id="quiz-begin">Begin Training</button>
     </div>`;
+
+  $$('#dojo-modes .dojo-mode-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.dojoMode = chip.dataset.mode;
+      saveProgress();
+      renderDojoIntro();
+    });
+  });
   $('#quiz-begin').addEventListener('click', startQuiz);
 }
 
@@ -670,9 +1060,25 @@ function renderLibrary() {
   const box = $('#library');
   if (!box) return;
   const codexNames = new Set(state.knives.map(k => k.name.toLowerCase()));
+  const q = state.librarySearch.trim().toLowerCase();
 
-  box.innerHTML = LIBRARY.map(g => {
-    const items = g.items.map(it => {
+  // Filter families/items by the archive search. A family whose title matches
+  // keeps all its blades; otherwise only matching blades are shown.
+  const groups = LIBRARY.map(g => {
+    const groupMatch = !q || [g.title, g.kanji, g.blurb].join(' ').toLowerCase().includes(q);
+    const items = groupMatch
+      ? g.items
+      : g.items.filter(it => [it.name, it.kanji, it.jp, it.note].join(' ').toLowerCase().includes(q));
+    return { g, items };
+  }).filter(entry => entry.items.length > 0);
+
+  if (!groups.length) {
+    box.innerHTML = `<p class="empty-state">No blades in the archive match <b>“${escapeHtml(state.librarySearch.trim())}”</b>.</p>`;
+    return;
+  }
+
+  box.innerHTML = groups.map(({ g, items }) => {
+    const itemsHtml = items.map(it => {
       const inCodex = codexNames.has(it.name.toLowerCase());
       return `
         <div class="lib-item${inCodex ? ' in-codex' : ''}">
@@ -685,18 +1091,19 @@ function renderLibrary() {
         </div>`;
     }).join('');
 
+    // Expand families automatically while searching so matches are visible.
     return `
-      <details class="lib-group" data-lib="${g.title}">
+      <details class="lib-group" data-lib="${g.title}"${q ? ' open' : ''}>
         <summary>
           <span class="lib-g-em">${g.emoji}</span>
           <span class="lib-g-text">
             <span class="lib-g-title">${g.title} <span class="lib-g-kanji">${g.kanji}</span></span>
             <span class="lib-g-blurb">${g.blurb}</span>
           </span>
-          <span class="lib-g-count">${g.items.length}</span>
+          <span class="lib-g-count">${items.length}</span>
           <span class="lib-chev" aria-hidden="true">⌄</span>
         </summary>
-        <div class="lib-items">${items}</div>
+        <div class="lib-items">${itemsHtml}</div>
       </details>`;
   }).join('');
 
@@ -710,6 +1117,628 @@ function renderLibrary() {
       addXp(12, 'Read the Greater Codex');
     });
   });
+}
+
+/* ---------- View router ---------- */
+const VIEWS = ['home', 'codex', 'dojo', 'learn', 'profile'];
+
+/* Switch the active top-level view and lazily (re)render its dynamic content. */
+function switchView(name) {
+  if (!VIEWS.includes(name)) name = 'home';
+  state.view = name;
+
+  $$('.view').forEach(v => {
+    const on = v.dataset.view === name;
+    v.hidden = !on;
+    v.classList.toggle('is-active', on);
+  });
+  $$('.navlink').forEach(b => {
+    const on = b.dataset.nav === name;
+    b.classList.toggle('is-active', on);
+    if (on) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+
+  if (name === 'home') renderDashboard();
+  if (name === 'codex') renderSteelGrid();
+  if (name === 'dojo') renderDaily();
+  if (name === 'learn') { renderWizard(); renderFixit(); renderAnatomy(); renderVs(); }
+  if (name === 'profile') renderProfile();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function wireNav() {
+  $$('.navlink').forEach(b => b.addEventListener('click', () => switchView(b.dataset.nav)));
+}
+
+/* ---------- Achievements ---------- */
+/* Snapshot of the numbers each achievement's check() is evaluated against. */
+function achContext() {
+  return {
+    knivesFound: state.collected.size,
+    knivesTotal: state.knives.length,
+    steelsFound: state.steelsRead.size,
+    steelsTotal: state.steels.length,
+    dojoRounds: state.dojo.rounds,
+    perfectRuns: state.dojo.perfect,
+    dailyStreak: state.daily.streak || 0
+  };
+}
+
+/* Evaluate every achievement; unlock, persist and announce any newly earned. */
+function checkAchievements() {
+  const ctx = achContext();
+  let unlocked = false;
+  (CD.achievements || []).forEach(a => {
+    if (!state.achievements.has(a.id) && typeof a.check === 'function' && a.check(ctx)) {
+      state.achievements.add(a.id);
+      unlocked = true;
+      achToast(a);
+    }
+  });
+  if (unlocked) {
+    saveProgress();
+    renderAchievements();
+  }
+}
+
+/* A subtle, self-dismissing unlock notification. */
+function achToast(a) {
+  const zone = $('#ach-zone');
+  if (!zone) return;
+  const el = document.createElement('div');
+  el.className = 'ach-toast';
+  el.innerHTML =
+    `<span class="ach-toast-ic">${a.icon}</span>` +
+    `<span class="ach-toast-tx"><b>Achievement unlocked</b>${escapeHtml(a.title)}</span>`;
+  zone.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  setTimeout(() => {
+    el.classList.remove('in');
+    setTimeout(() => el.remove(), 400);
+  }, 4200);
+}
+
+function renderAchievements() {
+  const box = $('#achievements');
+  if (!box) return;
+  box.innerHTML = (CD.achievements || []).map(a => {
+    const got = state.achievements.has(a.id);
+    return `
+      <div class="ach ${got ? 'got' : 'locked'}">
+        <span class="ach-ic">${got ? a.icon : '🔒'}</span>
+        <div class="ach-tx">
+          <div class="ach-title">${got ? escapeHtml(a.title) : 'Locked'}</div>
+          <div class="ach-desc">${escapeHtml(a.desc)}</div>
+        </div>
+        ${got ? '<span class="ach-flag">✓</span>' : ''}
+      </div>`;
+  }).join('');
+}
+
+/* ---------- Steel Codex ---------- */
+const STEEL_RATING_LABELS = {
+  edgeRetention: 'Edge Retention',
+  toughness: 'Toughness',
+  sharpening: 'Ease of Sharpening',
+  corrosion: 'Corrosion Resistance'
+};
+
+/* A compact 1–5 dot rating for the steel cards. */
+function miniRating(label, val) {
+  let dots = '';
+  for (let i = 1; i <= 5; i++) dots += `<i class="${i <= val ? 'on' : ''}"></i>`;
+  return `<div class="mini-rating"><span>${label}</span><div class="mini-dots">${dots}</div></div>`;
+}
+
+/* Animated 1–5 bars used inside the steel detail modal. */
+function steelRatingRows(r) {
+  return Object.entries(STEEL_RATING_LABELS).map(([key, label]) => {
+    const val = r[key] || 0;
+    return `
+      <div class="stat-row">
+        <div class="s-label"><span>${label}</span><span>${val}/5</span></div>
+        <div class="s-bar"><i style="width:0%" data-w="${(val / 5) * 100}"></i></div>
+      </div>`;
+  }).join('');
+}
+
+function renderSteelGrid() {
+  const grid = $('#steel-grid');
+  if (!grid) return;
+  const q = state.steelSearch.trim().toLowerCase();
+  let list = state.steels;
+  if (q) list = list.filter(s => `${s.name} ${s.jp} ${s.type} ${s.summary}`.toLowerCase().includes(q));
+
+  if (!list.length) {
+    grid.innerHTML = `<p class="empty-state">No steels match <b>“${escapeHtml(state.steelSearch.trim())}”</b>.</p>`;
+    return;
+  }
+
+  grid.innerHTML = list.map((s, i) => {
+    const studied = state.steelsRead.has(s.id);
+    return `
+      <article class="steel-card ${studied ? 'studied' : ''}" data-id="${s.id}" style="animation-delay:${i * 45}ms">
+        <div class="steel-top">
+          <span class="steel-em">${s.emoji}</span>
+          <span class="steel-type ${s.reactive ? 'reactive' : 'stainless'}">${s.reactive ? 'Reactive' : 'Stainless'}</span>
+        </div>
+        <h4 class="steel-name">${s.name}</h4>
+        <div class="steel-jp">${s.jp} · HRC ${s.hrc}</div>
+        <p class="steel-sum">${escapeHtml(s.summary)}</p>
+        <div class="steel-mini">
+          ${miniRating('Edge', s.ratings.edgeRetention)}
+          ${miniRating('Tough', s.ratings.toughness)}
+          ${miniRating('Sharpen', s.ratings.sharpening)}
+          ${miniRating('Rust✕', s.ratings.corrosion)}
+        </div>
+        ${studied ? '<span class="steel-check">✓ Studied</span>' : ''}
+      </article>`;
+  }).join('');
+
+  $$('.steel-card', grid).forEach(c => c.addEventListener('click', () => openSteelModal(c.dataset.id)));
+}
+
+/* Reuse the shared detail modal to present a steel entry. */
+function openSteelModal(id) {
+  const st = state.steelById[id];
+  if (!st) return;
+
+  setKnifeOnly(false);
+  $('#m-discovery').style.display = 'none';
+  $('#modal-back .modal').classList.remove('discovered');
+  // Steels have no "Not Ideal For" list — hide that shared block.
+  $('#m-avoid').closest('.detail-block').style.display = 'none';
+
+  $('#m-emoji').textContent = st.emoji;
+  $('#m-name').innerHTML = `${st.name} <span class="kanji">${st.jp}</span>`;
+  $('#m-role').textContent = st.type + (st.reactive ? ' · reactive carbon' : ' · low-maintenance');
+  $('#m-trans').textContent = `HRC ${st.hrc}`;
+  $('#m-purpose').textContent = st.summary;
+
+  $('#m-stats').innerHTML = steelRatingRows(st.ratings);
+
+  $('#m-best-title').textContent = 'Best For';
+  $('#m-best').innerHTML = (st.bestFor || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('');
+
+  $('#m-specs-title').textContent = 'Characteristics';
+  $('#m-specs').innerHTML = `<p class="d-text">${escapeHtml(st.characteristics)}</p>`;
+
+  $('#m-tip').textContent = st.reactive
+    ? 'Reactive steel — dry it promptly and wipe with a little camellia oil.'
+    : 'Stainless steel — easy to live with; just skip the dishwasher.';
+
+  state.modalId = id;
+  state.modalKind = 'steel';
+
+  $('#modal-back').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    $$('#m-stats .s-bar i').forEach(bar => { bar.style.width = bar.dataset.w + '%'; });
+  });
+
+  if (!state.steelsRead.has(id)) {
+    state.steelsRead.add(id);
+    saveProgress();
+    addXp(10, `Studied ${st.name}`);
+    renderSteelGrid();
+    checkAchievements();
+    renderDashboard();
+  }
+}
+
+/* ---------- My Knife Roll ---------- */
+/* Load the ownership checkbox + form from the stored record for this knife. */
+function bindOwnership(id) {
+  const rec = state.roll[id] || {};
+  const set = (sel, val) => { const el = $(sel); if (el) el.value = val || ''; };
+  const chk = $('#m-own');
+  const form = $('#m-own-form');
+  if (chk) chk.checked = !!rec.owned;
+  if (form) form.hidden = !rec.owned;
+  set('#own-length', rec.length);
+  set('#own-steel', rec.steel);
+  set('#own-maker', rec.maker);
+  set('#own-angle', rec.angle);
+  set('#own-sharpened', rec.lastSharpened);
+  set('#own-notes', rec.notes);
+  const saved = $('#own-saved');
+  if (saved) saved.textContent = '';
+}
+
+function onOwnToggle() {
+  const id = state.modalId;
+  if (!id || state.modalKind !== 'knife') return;
+  const owned = $('#m-own').checked;
+  const rec = state.roll[id] || {};
+  rec.owned = owned;
+  state.roll[id] = rec;
+  $('#m-own-form').hidden = !owned;
+  saveProgress();
+  renderRoll();
+  renderDashboard();
+}
+
+function onOwnFieldChange() {
+  const id = state.modalId;
+  if (!id || state.modalKind !== 'knife') return;
+  const rec = state.roll[id] || { owned: true };
+  rec.owned = $('#m-own').checked || rec.owned;
+  rec.length = $('#own-length').value.trim();
+  rec.steel = $('#own-steel').value.trim();
+  rec.maker = $('#own-maker').value.trim();
+  rec.angle = $('#own-angle').value.trim();
+  rec.lastSharpened = $('#own-sharpened').value;
+  rec.notes = $('#own-notes').value.trim();
+  state.roll[id] = rec;
+  saveProgress();
+  const saved = $('#own-saved');
+  if (saved) saved.textContent = 'Saved ✓';
+  renderRoll();
+}
+
+function renderRoll() {
+  const box = $('#knife-roll');
+  if (!box) return;
+  const owned = Object.entries(state.roll).filter(([, r]) => r && r.owned);
+  if (!owned.length) {
+    box.innerHTML = `<p class="empty-state">No knives in your roll yet. Open a Codex knife and toggle <b>“I own this knife”</b> to track its details.</p>`;
+    return;
+  }
+  box.innerHTML = owned.map(([id, r]) => {
+    const k = state.byId[id];
+    if (!k) return '';
+    const facts = [
+      r.length && `Length: ${escapeHtml(r.length)}`,
+      r.steel && `Steel: ${escapeHtml(r.steel)}`,
+      r.maker && `Maker: ${escapeHtml(r.maker)}`,
+      r.angle && `Angle: ${escapeHtml(r.angle)}`,
+      r.lastSharpened && `Sharpened: ${escapeHtml(r.lastSharpened)}`
+    ].filter(Boolean);
+    return `
+      <article class="roll-card" data-id="${id}">
+        <div class="roll-top"><span class="roll-em">${k.emoji}</span><h4>${k.name}</h4></div>
+        ${facts.length ? `<ul class="roll-facts">${facts.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+        ${r.notes ? `<p class="roll-notes">“${escapeHtml(r.notes)}”</p>` : ''}
+        <button class="btn ghost small roll-edit" data-id="${id}">Edit details</button>
+      </article>`;
+  }).join('');
+  $$('.roll-edit', box).forEach(b => b.addEventListener('click', () => openModal(b.dataset.id)));
+}
+
+/* ---------- Find My Knife (wizard) ---------- */
+function knifeSizeClass(k) {
+  const m = (k.bladeLength || '').match(/\d+/);
+  const n = m ? +m[0] : 180;
+  if (n <= 150) return 'compact';
+  if (n >= 240) return 'long';
+  return 'medium';
+}
+const SIZE_ORDER = ['compact', 'medium', 'long'];
+
+/* Score every knife (0–100) against the wizard answers via the compare matrix. */
+function wizardScores(ans) {
+  const M = CD.compareMatrix || {};
+  const cutLabel = { veg: 'vegetables', meat: 'meat & poultry', fish: 'fish', mixed: 'all-round prep' };
+  const techLabel = { rocking: 'rock-chopping', chopping: 'straight chopping', precision: 'precise slicing' };
+
+  return state.knives.map(k => {
+    const m = M[k.id];
+    if (!m) return { k, score: 0, reasons: [] };
+    const reasons = [];
+
+    // Cuts (35)
+    let cut;
+    if (ans.cuts === 'mixed') cut = (m.veg + m.meat + m.fish) / 30;
+    else cut = (m[ans.cuts] ?? 5) / 10;
+    if (cut >= 0.8 && cutLabel[ans.cuts]) reasons.push(`strong at ${cutLabel[ans.cuts]}`);
+
+    // Technique (25)
+    let tech;
+    if (ans.technique === 'any') tech = Math.max(m.rocking, m.chopping, m.precision) / 10;
+    else tech = (m[ans.technique] ?? 5) / 10;
+    if (ans.technique !== 'any' && tech >= 0.8 && techLabel[ans.technique]) reasons.push(`suits ${techLabel[ans.technique]}`);
+
+    // Experience (20)
+    let exp;
+    if (ans.experience === 'beginner') {
+      exp = m.beginner / 10;
+      if (m.beginner >= 8) reasons.push('forgiving for beginners');
+    } else if (ans.experience === 'advanced') {
+      exp = 0.6 + 0.4 * (1 - m.beginner / 10);
+      if (m.beginner <= 5) reasons.push('rewards experienced hands');
+    } else {
+      exp = 0.75;
+    }
+
+    // Size (20)
+    const sc = knifeSizeClass(k);
+    const dist = Math.abs(SIZE_ORDER.indexOf(sc) - SIZE_ORDER.indexOf(ans.size));
+    const size = dist === 0 ? 1 : dist === 1 ? 0.5 : 0.2;
+    if (dist === 0 && ans.size) reasons.push(`${ans.size} blade size`);
+
+    const score = Math.round(cut * 35 + tech * 25 + exp * 20 + size * 20);
+    return { k, score, reasons };
+  }).sort((a, b) => b.score - a.score);
+}
+
+function renderWizard() {
+  const box = $('#wizard');
+  if (!box) return;
+  const steps = CD.wizard || [];
+  box.innerHTML = `
+    <div class="wiz-questions">
+      ${steps.map((s, si) => `
+        <div class="wiz-q">
+          <div class="wiz-q-title">${si + 1}. ${escapeHtml(s.q)}</div>
+          <div class="wiz-opts">
+            ${s.options.map(o => `
+              <button class="wiz-opt" data-q="${s.id}" data-v="${o.value}">
+                <span class="em">${o.emoji}</span><span>${escapeHtml(o.label)}</span>
+              </button>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="wiz-actions">
+      <button class="btn" id="wiz-go" disabled>See my match</button>
+      <button class="btn ghost" id="wiz-reset">Reset</button>
+    </div>
+    <div class="wiz-result" id="wiz-result"></div>`;
+
+  const answers = {};
+  const update = () => { $('#wiz-go').disabled = Object.keys(answers).length < steps.length; };
+  $$('.wiz-opt', box).forEach(btn => btn.addEventListener('click', () => {
+    const q = btn.dataset.q;
+    answers[q] = btn.dataset.v;
+    $$(`.wiz-opt[data-q="${q}"]`, box).forEach(b => b.classList.toggle('sel', b === btn));
+    update();
+  }));
+  $('#wiz-go').addEventListener('click', () => showWizardResult(answers));
+  $('#wiz-reset').addEventListener('click', renderWizard);
+}
+
+function showWizardResult(ans) {
+  const ranked = wizardScores(ans);
+  if (!ranked.length) return;
+  const top = ranked[0];
+  const alts = ranked.slice(1, 3);
+  const res = $('#wiz-result');
+
+  const card = (r, primary) => {
+    const reasons = r.reasons.length ? r.reasons : ['a solid all-round fit'];
+    return `
+      <div class="wiz-pick ${primary ? 'primary' : ''}">
+        <div class="wiz-pick-top">
+          <span class="em">${r.k.emoji}</span>
+          <div class="wiz-pick-id">
+            <div class="wiz-pick-name">${r.k.name} <span class="kanji">${r.k.kanji || ''}</span></div>
+            <div class="wiz-pick-role">${r.k.role || ''}</div>
+          </div>
+          <div class="wiz-pct">${r.score}%</div>
+        </div>
+        <div class="wiz-bar"><i style="width:${r.score}%"></i></div>
+        <p class="wiz-why">Why: ${reasons.join(', ')}.</p>
+        <button class="btn ghost small wiz-open" data-id="${r.k.id}">View in Codex</button>
+      </div>`;
+  };
+
+  res.innerHTML = `
+    <div class="wiz-result-head">Your best match</div>
+    ${card(top, true)}
+    <div class="wiz-result-head">Also consider</div>
+    <div class="wiz-alts">${alts.map(a => card(a, false)).join('')}</div>`;
+  res.classList.add('show');
+  $$('.wiz-open', res).forEach(b => b.addEventListener('click', () => openModal(b.dataset.id)));
+  res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ---------- Fix My Knife ---------- */
+function renderFixit() {
+  const box = $('#fixit');
+  if (!box) return;
+  const items = CD.fixit || [];
+  box.innerHTML = `
+    <div class="fix-choices">
+      ${items.map(f => `
+        <button class="fix-choice" data-id="${f.id}">
+          <span class="em">${f.icon}</span><span>${escapeHtml(f.title)}</span>
+        </button>`).join('')}
+    </div>
+    <div class="fix-detail" id="fix-detail"></div>`;
+  $$('.fix-choice', box).forEach(b => b.addEventListener('click', () => {
+    $$('.fix-choice', box).forEach(x => x.classList.toggle('sel', x === b));
+    showFixit(b.dataset.id);
+  }));
+}
+
+function showFixit(id) {
+  const f = (CD.fixit || []).find(x => x.id === id);
+  if (!f) return;
+  const d = $('#fix-detail');
+  d.innerHTML = `
+    <div class="fix-head">
+      <span class="em">${f.icon}</span>
+      <div><h4>${escapeHtml(f.title)}</h4><p>${escapeHtml(f.desc)}</p></div>
+    </div>
+    <div class="fix-grit">Recommended start: <b>${escapeHtml(f.grit)}</b></div>
+    <ol class="fix-steps">${f.steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ol>
+    ${f.warning ? `<div class="fix-warn">⚠️ ${escapeHtml(f.warning)}</div>` : ''}`;
+  d.classList.add('show');
+}
+
+/* ---------- Knife anatomy ---------- */
+function renderAnatomy() {
+  const box = $('#anatomy');
+  if (!box) return;
+  const parts = CD.anatomy || [];
+  box.innerHTML = `
+    <div class="anatomy-stage">
+      <svg class="anatomy-svg" viewBox="0 0 400 150" role="img" aria-label="Diagram of a Japanese chef's knife">
+        <rect x="8" y="60" width="104" height="30" rx="9" class="an-handle"/>
+        <circle cx="30" cy="75" r="2.6" class="an-rivet"/>
+        <circle cx="60" cy="75" r="2.6" class="an-rivet"/>
+        <circle cx="90" cy="75" r="2.6" class="an-rivet"/>
+        <path d="M112,60 L344,58 Q388,60 388,78 Q368,88 120,90 L112,90 Z" class="an-blade"/>
+        <path d="M120,72 L360,72" class="an-shinogi"/>
+      </svg>
+      ${parts.map(p => `
+        <button class="an-dot" data-id="${p.id}" style="left:${p.x}%;top:${p.y}%" aria-label="${escapeHtml(p.name)}">
+          <span></span>
+        </button>`).join('')}
+    </div>
+    <div class="anatomy-info" id="anatomy-info">
+      <p>Tap a labelled point on the blade to learn what it does.</p>
+    </div>`;
+  $$('.an-dot', box).forEach(dot => {
+    const show = () => showAnatomy(dot.dataset.id, dot);
+    dot.addEventListener('click', show);
+    dot.addEventListener('mouseenter', show);
+    dot.addEventListener('focus', show);
+  });
+}
+
+function showAnatomy(id, dot) {
+  const p = (CD.anatomy || []).find(x => x.id === id);
+  if (!p) return;
+  $$('.an-dot', $('#anatomy')).forEach(d => d.classList.toggle('active', d === dot));
+  $('#anatomy-info').innerHTML = `
+    <div class="an-info-name">${p.name} <span class="an-jp">${p.jp}</span></div>
+    <p>${escapeHtml(p.note)}</p>`;
+}
+
+/* ---------- Knife vs Knife ---------- */
+function renderVs() {
+  const box = $('#vs');
+  if (!box || !state.knives.length) return;
+  const opts = state.knives.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
+  const a = state.vsA && state.byId[state.vsA] ? state.vsA : state.knives[0].id;
+  const b = state.vsB && state.byId[state.vsB] ? state.vsB : (state.knives[1] || state.knives[0]).id;
+  state.vsA = a;
+  state.vsB = b;
+  box.innerHTML = `
+    <div class="vs-selects">
+      <select id="vs-a" aria-label="First knife">${opts}</select>
+      <span class="vs-mid">vs</span>
+      <select id="vs-b" aria-label="Second knife">${opts}</select>
+    </div>
+    <div class="vs-body" id="vs-body"></div>`;
+  $('#vs-a').value = a;
+  $('#vs-b').value = b;
+  $('#vs-a').addEventListener('change', e => { state.vsA = e.target.value; renderVsBody(); });
+  $('#vs-b').addEventListener('change', e => { state.vsB = e.target.value; renderVsBody(); });
+  renderVsBody();
+}
+
+function renderVsBody() {
+  const body = $('#vs-body');
+  if (!body) return;
+  const M = CD.compareMatrix || {};
+  const ka = state.byId[state.vsA];
+  const kb = state.byId[state.vsB];
+  const ma = M[state.vsA] || {};
+  const mb = M[state.vsB] || {};
+  const metrics = CD.compareMetrics || [];
+  body.innerHTML = `
+    <div class="vs-heads">
+      <div class="vs-head"><span class="em">${ka.emoji}</span>${ka.name}</div>
+      <div class="vs-head"><span class="em">${kb.emoji}</span>${kb.name}</div>
+    </div>
+    ${metrics.map(mt => {
+      const va = ma[mt.key] || 0;
+      const vb = mb[mt.key] || 0;
+      const da = mt.invert ? 10 - va : va;
+      const db = mt.invert ? 10 - vb : vb;
+      const aWin = da > db;
+      const bWin = db > da;
+      return `
+        <div class="vs-row">
+          <div class="vs-cell ${aWin ? 'win' : ''}"><div class="vs-bar"><i style="width:${da * 10}%"></i></div><span class="vs-num">${da}</span></div>
+          <div class="vs-label">${mt.label}</div>
+          <div class="vs-cell right ${bWin ? 'win' : ''}"><span class="vs-num">${db}</span><div class="vs-bar"><i style="width:${db * 10}%"></i></div></div>
+        </div>`;
+    }).join('')}`;
+}
+
+/* ---------- Home dashboard ---------- */
+function continueRecommendation() {
+  const today = todayKey();
+  if (!(state.daily.done && state.daily.date === today)) {
+    return { label: 'Your Daily Dojo is ready — five quick questions.', cta: 'Daily Dojo', action: () => switchView('dojo') };
+  }
+  if (state.collected.size < state.knives.length) {
+    return { label: 'Discover the rest of the Codex.', cta: 'Open Codex', action: () => switchView('codex') };
+  }
+  if (state.steelsRead.size < state.steels.length) {
+    return {
+      label: 'Study the steels behind the blades.',
+      cta: 'Steel Codex',
+      action: () => { switchView('codex'); setTimeout(() => $('#steel-section')?.scrollIntoView({ behavior: 'smooth' }), 120); }
+    };
+  }
+  return { label: 'Keep your instincts sharp in the Dojo.', cta: 'Enter Dojo', action: () => switchView('dojo') };
+}
+
+function renderDashboard() {
+  const box = $('#dashboard');
+  if (!box) return;
+
+  const rank = rankFor(state.xp);
+  const nxt = nextRank(state.xp);
+  let pct = 100;
+  let toNext = 'Top rank reached 🎉';
+  if (nxt) {
+    const span = nxt.min - rank.min;
+    pct = Math.min(100, Math.round(((state.xp - rank.min) / span) * 100));
+    toNext = `${nxt.min - state.xp} XP to ${nxt.name}`;
+  }
+
+  const found = state.collected.size;
+  const total = state.knives.length;
+  const steelFound = state.steelsRead.size;
+  const steelTotal = state.steels.length;
+  const owned = Object.values(state.roll).filter(r => r && r.owned).length;
+  const streak = state.daily.streak || 0;
+  const dailyDone = state.daily.done && state.daily.date === todayKey();
+
+  const recentId = [...state.collected].slice(-1)[0];
+  const recent = recentId ? state.byId[recentId] : null;
+  const rec = continueRecommendation();
+
+  box.innerHTML = `
+    <div class="dash-grid">
+      <div class="dash-card dash-rank">
+        <div class="dash-rank-top">
+          <span class="dash-em">${rank.emoji}</span>
+          <div><div class="dash-rank-name">${rank.name}</div><div class="dash-xp">${state.xp} XP</div></div>
+        </div>
+        <div class="dash-bar"><i style="width:${pct}%"></i></div>
+        <div class="dash-sub">${toNext}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-metric">🔥 ${streak}</div>
+        <div class="dash-mlabel">Daily streak</div>
+        <div class="dash-sub">${dailyDone ? 'Done for today ✓' : 'Daily Dojo awaits'}</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-metric">${found}<span class="dash-metric-sub">/${total}</span></div>
+        <div class="dash-mlabel">Knives discovered</div>
+        <div class="dash-bar sm"><i style="width:${total ? (found / total) * 100 : 0}%"></i></div>
+        <div class="dash-sub">${steelFound}/${steelTotal} steels · ${owned} in your roll</div>
+      </div>
+      <div class="dash-card dash-recent">
+        ${recent
+          ? `<div class="dash-mlabel">Recently discovered</div><div class="dash-recent-em">${recent.emoji}</div><div class="dash-recent-name">${recent.name}</div>`
+          : `<div class="dash-mlabel">Start discovering</div><div class="dash-recent-em">🔪</div><div class="dash-recent-name">Open the Codex</div>`}
+      </div>
+    </div>
+    <div class="dash-cta">
+      <div class="dash-cta-tx"><b>Continue learning</b><span>${rec.label}</span></div>
+      <button class="btn" id="dash-continue">${rec.cta}</button>
+    </div>`;
+
+  const cont = $('#dash-continue');
+  if (cont) cont.addEventListener('click', rec.action);
 }
 
 /* ---------- Boot ---------- */
@@ -738,11 +1767,31 @@ async function init() {
   state.quiz = data.quiz;
   state.byId = Object.fromEntries(data.knives.map(k => [k.id, k]));
 
+  // Fold the extended lore (history, geometry, care, steels, techniques,
+  // similar knives) into each knife record so the detail view can read it.
+  if (data.lore) {
+    state.knives.forEach(k => {
+      if (data.lore[k.id]) Object.assign(k, data.lore[k.id]);
+    });
+  }
+
   state.stones = data.stones || [];
   state.stoneById = Object.fromEntries(state.stones.map(s => [s.id, s]));
 
+  // Steel Codex reference data + steel questions (from codex-data.js).
+  state.steels = CD.steels || [];
+  state.steelById = Object.fromEntries(state.steels.map(s => [s.id, s]));
+  if (Array.isArray(CD.steelQuiz) && CD.steelQuiz.length) {
+    state.quiz = state.quiz.concat(CD.steelQuiz);
+  }
+
+  // Guard against an outdated saved Dojo mode.
+  if (!DOJO_MODES.some(m => m.id === state.dojoMode)) state.dojoMode = 'all';
+
   // prune any collected ids that no longer exist
   state.collected = new Set([...state.collected].filter(id => state.byId[id]));
+  // prune roll entries for removed knives
+  Object.keys(state.roll).forEach(id => { if (!state.byId[id]) delete state.roll[id]; });
 
   renderFilters();
   renderGrid();
@@ -750,25 +1799,54 @@ async function init() {
   renderCompare();
   renderStoneCompare();
   renderDojoIntro();
+  renderSteelGrid();
+  renderDaily();
+  renderProfile();
+  renderDashboard();
   updateHud();
+  checkAchievements();
 
   // events
   $('#modal-close').addEventListener('click', closeModal);
   $('#modal-back').addEventListener('click', e => {
     if (e.target === $('#modal-back')) closeModal();
   });
-  $('#hud-rank').addEventListener('click', openRanks);
-  $('#ranks-close').addEventListener('click', closeRanks);
-  $('#ranks-back').addEventListener('click', e => {
-    if (e.target === $('#ranks-back')) closeRanks();
-  });
+  $('#hud-rank').addEventListener('click', () => switchView('profile'));
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeModal(); closeRanks(); }
+    if (e.key === 'Escape') closeModal();
   });
-  $('#cta-explore').addEventListener('click', () =>
-    $('#codex').scrollIntoView({ behavior: 'smooth' }));
-  $('#cta-dojo').addEventListener('click', () =>
-    $('#dojo').scrollIntoView({ behavior: 'smooth' }));
+  $('#cta-explore').addEventListener('click', () => switchView('codex'));
+  $('#cta-dojo').addEventListener('click', () => switchView('dojo'));
+
+  // Persistent navigation router.
+  wireNav();
+
+  // My Knife Roll ownership controls (single binding; reads state.modalId).
+  $('#m-own').addEventListener('change', onOwnToggle);
+  ['own-length', 'own-steel', 'own-maker', 'own-angle', 'own-sharpened', 'own-notes']
+    .forEach(id => { const el = $('#' + id); if (el) el.addEventListener('input', onOwnFieldChange); });
+
+  // Live search — Codex grid, Greater Codex archive, Steel Codex.
+  wireSearch('#codex-search', '#codex-search-clear', v => { state.search = v; renderGrid(); });
+  wireSearch('#library-search', '#library-search-clear', v => { state.librarySearch = v; renderLibrary(); });
+  wireSearch('#steel-search', '#steel-search-clear', v => { state.steelSearch = v; renderSteelGrid(); });
+}
+
+/* Bind an input + clear button to a filtering callback. */
+function wireSearch(inputSel, clearSel, apply) {
+  const input = $(inputSel);
+  const clear = $(clearSel);
+  if (!input) return;
+  input.addEventListener('input', () => {
+    clear.hidden = !input.value;
+    apply(input.value);
+  });
+  clear.addEventListener('click', () => {
+    input.value = '';
+    clear.hidden = true;
+    apply('');
+    input.focus();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

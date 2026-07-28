@@ -181,6 +181,88 @@
       "emoji": "🎌"
     }
   ],
+  "lore": {
+    "gyuto": {
+      "techniques": ["Rock chop", "Push cut", "Draw slice", "Tip detail work"],
+      "history": "Born in the Meiji era as Japan embraced Western cuisine, the gyuto reimagines the French chef's knife in thinner, harder steel with a lighter, more nimble body.",
+      "geometry": "A thin double-bevel blade with a gently curved belly and a flat-to-convex grind that tapers to a fine, agile tip.",
+      "care": ["Hand wash and dry immediately", "Refine on a #1000–#3000 stone", "Store in a saya or on a magnetic strip"],
+      "steels": ["VG-10", "SG2 / R2 powder", "White #2 (Shirogami)", "AUS-10"],
+      "similar": ["santoku", "bunka", "kiritsuke"]
+    },
+    "santoku": {
+      "techniques": ["Push cut", "Straight chop", "Tap chop"],
+      "history": "A post-war Japanese home knife, the santoku ('three virtues') fused the Western gyuto with the traditional nakiri to master meat, fish and vegetables alike.",
+      "geometry": "A shorter, flatter double-bevel blade with a sheep's-foot tip and little belly, ground thin for clean downward push-cuts.",
+      "care": ["Hand wash and dry right away", "Avoid bones and frozen food", "Touch up on a #1000–#3000 stone"],
+      "steels": ["VG-10", "Molybdenum stainless", "White #2", "SG2 / R2"],
+      "similar": ["gyuto", "bunka", "nakiri"]
+    },
+    "nakiri": {
+      "techniques": ["Push cut", "Straight drop cut", "Katsuramuki peel"],
+      "history": "The double-bevel home cousin of the professional single-bevel usuba, the nakiri became Japan's everyday vegetable knife.",
+      "geometry": "A tall, rectangular double-bevel blade with a dead-flat edge and a thin grind that drops cleanly to the board.",
+      "care": ["Hand wash and dry", "Keep the flat edge true on a stone", "Use a wooden board to spare the edge"],
+      "steels": ["White #2", "Blue #2 (Aogami)", "VG-10", "Stainless-clad carbon"],
+      "similar": ["santoku", "gyuto", "bunka"]
+    },
+    "petty": {
+      "techniques": ["In-hand paring", "Board slicing", "Tip detail work"],
+      "history": "The petty ('petite') is Japan's answer to the Western utility knife, sitting between a paring knife and a gyuto.",
+      "geometry": "A slim, light double-bevel blade with a fine pointed tip and a thin grind for delicate close work.",
+      "care": ["Hand wash and dry", "Store with a blade guard", "Refine on a fine stone"],
+      "steels": ["VG-10", "SG2 / R2", "White #2", "AUS-8"],
+      "similar": ["gyuto", "santoku"]
+    },
+    "sujihiki": {
+      "techniques": ["Single draw slice", "Long carving stroke"],
+      "history": "The double-bevel counterpart to the single-bevel yanagiba, the sujihiki ('sinew slicer') is a Western-friendly carving and slicing blade.",
+      "geometry": "A long, narrow double-bevel blade with little height and a fine tapering grind that slices proteins in one stroke.",
+      "care": ["Hand wash and dry immediately", "Protect the long edge in a saya", "Finish on a fine stone for push-cut keenness"],
+      "steels": ["SG2 / R2", "VG-10", "White #2", "Ginsan (Silver #3)"],
+      "similar": ["yanagiba", "gyuto"]
+    },
+    "yanagiba": {
+      "techniques": ["Hikizukuri (single pull slice)", "Sogizukuri (angled slice)"],
+      "history": "The yanagiba ('willow blade') arose in the Kanto region as the classic single-bevel slicer of Edo-style sushi and sashimi.",
+      "geometry": "A long single-bevel blade with a flat back (uraoshi) and a hollow-ground ura, giving an ultra-keen one-sided edge.",
+      "care": ["Lightly maintain the flat back (uraoshi)", "Sharpen mainly on the bevel side", "Dry and oil carbon-steel versions"],
+      "steels": ["White #1 / #2 (Shirogami)", "Blue #2 (Aogami)", "Ginsan (Silver #3)"],
+      "similar": ["sujihiki", "deba"]
+    },
+    "deba": {
+      "techniques": ["Filleting stroke", "Heel chop through bone", "Tip detail work"],
+      "history": "The deba was forged in Sakai during the Edo period as a heavy single-bevel knife for breaking down whole fish.",
+      "geometry": "A thick-spined, heavy single-bevel blade with a hollow-ground back — powerful at the heel, precise at the tip.",
+      "care": ["Wipe and dry after fish work", "Oil carbon steel to prevent rust", "Use the heel for bone; never pry with the tip"],
+      "steels": ["White #2 (Shirogami)", "Blue #2 (Aogami)", "Stainless-clad carbon"],
+      "similar": ["yanagiba", "honesuki"]
+    },
+    "honesuki": {
+      "techniques": ["Joint separation", "Boning strokes", "Tip pop"],
+      "history": "A Japanese poultry boning knife, the honesuki ('bone remover') was shaped to break down birds cleanly around the joints.",
+      "geometry": "A stiff, triangular blade with an asymmetric double bevel and a strong pointed tip for close joint work.",
+      "care": ["Hand wash and dry", "Keep the sharp tip protected", "Touch up on a medium stone"],
+      "steels": ["VG-10", "White #2", "Molybdenum stainless"],
+      "similar": ["deba", "petty"]
+    },
+    "kiritsuke": {
+      "techniques": ["Push cut", "Draw slice", "Tip scoring"],
+      "history": "Traditionally a single-bevel hybrid of yanagiba and usuba, the kiritsuke was carried as the badge of a head chef (itamae).",
+      "geometry": "A straight-edged blade crowned with a dramatic angled reverse-tanto tip, made in both single- and double-bevel forms.",
+      "care": ["Hand wash and dry", "Respect the delicate pointed tip", "Refine on fine stones"],
+      "steels": ["SG2 / R2", "White #2", "Blue #2", "VG-10"],
+      "similar": ["gyuto", "yanagiba", "bunka"]
+    },
+    "bunka": {
+      "techniques": ["Push cut", "Tap chop", "Tip scoring"],
+      "history": "A mid-20th-century all-rounder, the bunka ('culture') paired the santoku's body with a sharp reverse-tanto K-tip for extra point control.",
+      "geometry": "A flat-profiled double-bevel blade capped with an angular reverse-tanto tip for precise point and scoring work.",
+      "care": ["Hand wash and dry", "Avoid bones and frozen food", "Maintain on a #1000–#3000 stone"],
+      "steels": ["VG-10", "SG2 / R2", "White #2", "Blue #2"],
+      "similar": ["santoku", "gyuto", "kiritsuke"]
+    }
+  },
   "stones": [
     {
       "id": "coarse",

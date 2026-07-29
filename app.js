@@ -707,6 +707,9 @@ function updateAuthUI() {
     const label = on ? (state.displayName || email.split('@')[0] || 'Account') : 'Sign in';
     btn.textContent = label;
     btn.classList.toggle('is-in', on);
+    // Initial used for the compact circular avatar shown on small screens.
+    btn.dataset.initial = on ? (label.trim().charAt(0).toUpperCase() || '☁') : '';
+    btn.setAttribute('aria-label', on ? `Account: ${label}` : 'Sign in');
   }
 }
 

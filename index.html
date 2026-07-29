@@ -31,14 +31,16 @@
           <div class="label">Collected</div>
           <div class="value"><span id="hud-collected">0</span>/<span id="hud-total">0</span></div>
         </div>
-        <div class="stat" id="hud-stat-xp" hidden>
-          <div class="label">XP</div>
-          <div class="value" id="hud-xp">0</div>
+        <div class="hud-cluster">
+          <div class="stat" id="hud-stat-xp" hidden>
+            <div class="label">XP</div>
+            <div class="value" id="hud-xp">0</div>
+          </div>
+          <div class="xp-track" id="hud-xp-track" title="Progress to next rank" hidden>
+            <div class="xp-fill" id="hud-xp-fill"></div>
+          </div>
+          <button class="rank-badge" id="hud-rank" title="View your profile" hidden>Apprentice</button>
         </div>
-        <div class="xp-track" id="hud-xp-track" title="Progress to next rank" hidden>
-          <div class="xp-fill" id="hud-xp-fill"></div>
-        </div>
-        <button class="rank-badge" id="hud-rank" title="View your profile" hidden>Apprentice</button>
         <div class="account-menu">
           <button class="account-btn" id="hud-account" aria-haspopup="dialog" aria-expanded="false">Sign in</button>
           <div class="account-pop" id="account-pop" role="dialog" aria-label="Account" hidden>

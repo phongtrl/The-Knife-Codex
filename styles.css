@@ -91,6 +91,9 @@ body {
 
 /* ---------- Player HUD ---------- */
 .hud { display: flex; align-items: center; gap: 1.1rem; }
+/* On desktop the cluster is transparent to layout so XP / track / rank sit in
+   the HUD row exactly as before. On mobile it becomes a compact column. */
+.hud-cluster { display: contents; }
 .hud .stat { text-align: right; }
 .hud .stat .label {
   font-size: 0.62rem;
@@ -1540,6 +1543,45 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 @media (max-width: 720px) {
   .hud .stat.hide-sm { display: none; }
   .xp-track { display: none; }
+  /* Stack the rank badge on top with the XP figure tucked beneath it, so the
+     HUD stays narrow and the brand title never wraps. */
+  .hud-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  .hud-cluster .rank-badge { order: 1; }
+  .hud-cluster #hud-stat-xp:not([hidden]) {
+    order: 2;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .hud-cluster #hud-stat-xp .label { font-size: 0.55rem; }
+  .hud-cluster #hud-stat-xp .value { font-size: 0.82rem; line-height: 1; }
+  .brand h1 { white-space: nowrap; }
+  /* Collapse the (possibly long) name pill into a tidy circular avatar showing
+     the chef's initial. The full display name still appears in the account
+     popover. Signed-out state keeps the normal "Sign in" pill. */
+  .account-btn.is-in {
+    width: 34px;
+    height: 34px;
+    max-width: none;
+    padding: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 0;
+  }
+  .account-btn.is-in::before {
+    content: attr(data-initial);
+    font-family: var(--font-round);
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+  }
   .answers { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: 1fr; }
   .dojo { padding: 1.8rem 1.4rem; }

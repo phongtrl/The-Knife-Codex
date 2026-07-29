@@ -321,8 +321,9 @@
           <div class="kicker">My Kitchen</div>
           <h3>My Knife Roll</h3>
         </div>
-        <p>Knives you own. Open any Codex knife to mark it as owned and record its details.</p>
+        <p>Knives you own. Add one below, or open any Codex knife to mark it as owned.</p>
       </div>
+      <button type="button" class="btn primary small roll-add-btn" id="roll-add">+ Add a knife to your roll</button>
       <div class="roll" id="knife-roll"><!-- injected by JS --></div>
     </section>
 
@@ -445,6 +446,20 @@
       <div class="chef-rank" id="chef-rank"></div>
       <div class="chef-stats" id="chef-stats"></div>
       <p class="chef-note" id="chef-note"></p>
+    </div>
+  </div>
+
+  <!-- ===== Add-to-roll knife picker ===== -->
+  <div class="modal-back rollpick-back" id="rollpick-back">
+    <div class="rollpick-card" role="dialog" aria-modal="true" aria-labelledby="rollpick-title">
+      <button class="close" id="rollpick-close" aria-label="Close">✕</button>
+      <h3 class="rollpick-title" id="rollpick-title">Add a knife to your roll</h3>
+      <p class="rollpick-sub">Pick a knife to add — you can record its steel, length and notes next.</p>
+      <div class="rollpick-search">
+        <span class="rollpick-search-ic" aria-hidden="true">🔍</span>
+        <input type="text" id="rollpick-search" class="rollpick-search-input" placeholder="Search knives…" autocomplete="off" aria-label="Search knives" />
+      </div>
+      <div class="rollpick-list" id="rollpick-list"></div>
     </div>
   </div>
 

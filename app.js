@@ -2203,6 +2203,113 @@ function renderRoll() {
   $$('.roll-edit', box).forEach(b => b.addEventListener('click', () => openModal(b.dataset.id)));
 }
 
+/* ---------- Add-to-roll knife picker ---------- */
+let rollPickTimer;
+
+/* Wire the "Add a knife" button + picker modal (search, select, close). */
+function wireRollAdd() {
+  const addBtn = $('#roll-add');
+  if (addBtn) addBtn.addEventListener('click', () => openRollPicker());
+
+  const search = $('#rollpick-search');
+  if (search) {
+    search.addEventListener('input', () => {
+      clearTimeout(rollPickTimer);
+      rollPickTimer = setTimeout(() => renderRollPickList(search.value), 120);
+    });
+  }
+
+  const list = $('#rollpick-list');
+  if (list) {
+    list.addEventListener('click', e => {
+      const row = e.target.closest('[data-pick]');
+      if (!row) return;
+      const id = row.dataset.pick;
+      closeRollPicker();
+      startAddToRoll(id);
+    });
+  }
+
+  const close = $('#rollpick-close');
+  if (close) close.addEventListener('click', closeRollPicker);
+  const back = $('#rollpick-back');
+  if (back) back.addEventListener('click', e => { if (e.target === back) closeRollPicker(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('#rollpick-back')?.classList.contains('open')) closeRollPicker();
+  });
+}
+
+function openRollPicker() {
+  const back = $('#rollpick-back');
+  if (!back) return;
+  const search = $('#rollpick-search');
+  if (search) search.value = '';
+  renderRollPickList('');
+  back.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (search) setTimeout(() => search.focus(), 40);
+}
+
+function closeRollPicker() {
+  const back = $('#rollpick-back');
+  if (!back) return;
+  back.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* Render the searchable list of every Codex knife, showing how many are
+   already in the roll. */
+function renderRollPickList(query) {
+  const list = $('#rollpick-list');
+  if (!list) return;
+  const q = (query || '').trim().toLowerCase();
+  const matches = state.knives.filter(k => {
+    if (!q) return true;
+    return (k.name + ' ' + (k.kanji || '') + ' ' + (k.role || '') + ' ' + (k.translation || ''))
+      .toLowerCase().includes(q);
+  });
+  if (!matches.length) {
+    list.innerHTML = `<p class="empty-state">No knives match “${escapeHtml(query)}”.</p>`;
+    return;
+  }
+  list.innerHTML = matches.map(k => {
+    const owned = getRoll(k.id).length;
+    return `
+      <button type="button" class="rollpick-row" data-pick="${k.id}">
+        <span class="rollpick-em">${k.emoji}</span>
+        <span class="rollpick-info">
+          <span class="rollpick-name">${escapeHtml(k.name)}</span>
+          <span class="rollpick-role">${escapeHtml(k.role || '')}</span>
+        </span>
+        ${owned ? `<span class="rollpick-owned">${owned} owned</span>` : `<span class="rollpick-plus">+</span>`}
+      </button>`;
+  }).join('');
+}
+
+/* Open a knife's modal and jump straight to adding a new ownership entry. */
+function startAddToRoll(id) {
+  if (!state.byId[id]) return;
+  openModal(id);
+  if (!Array.isArray(state.roll[id])) state.roll[id] = [];
+  state.roll[id].push({});
+  const chk = $('#m-own');
+  if (chk) chk.checked = true;
+  const form = $('#m-own-form');
+  if (form) form.hidden = false;
+  renderOwnEntries(id);
+  saveProgress();
+  renderRoll();
+  renderDashboard();
+  // Scroll the ownership block into view and focus its first field.
+  const block = $('#block-own');
+  const entries = $$('#m-own-list .own-entry');
+  const last = entries[entries.length - 1];
+  requestAnimationFrame(() => {
+    block?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    last?.querySelector('input')?.focus();
+  });
+}
+
 /* ---------- Find My Knife (wizard) ---------- */
 function knifeSizeClass(k) {
   const m = (k.bladeLength || '').match(/\d+/);
@@ -2686,6 +2793,7 @@ async function init() {
   // Cloud accounts, progress sync, and the leaderboard (Supabase).
   initAuth();
   wireChefSearch();
+  wireRollAdd();
 }
 
 /* Bind an input + clear button to a filtering callback. */

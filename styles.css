@@ -1775,3 +1775,74 @@ button.lb-row { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .chef-stat-l { font-size: 0.68rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
 .chef-note { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
 
+/* ---------- Add-to-roll knife picker ---------- */
+.roll-add-btn { margin-bottom: 1.1rem; }
+
+.rollpick-back { z-index: 130; }
+.rollpick-card {
+  position: relative;
+  background: var(--card);
+  border-radius: calc(var(--radius) + 6px);
+  width: min(440px, 100%);
+  max-height: min(80vh, 640px);
+  display: flex; flex-direction: column;
+  padding: 1.8rem 1.6rem 1.4rem;
+  box-shadow: var(--shadow);
+  transform: translateY(20px) scale(0.98);
+  transition: transform 0.35s var(--ease);
+}
+.rollpick-back.open .rollpick-card { transform: translateY(0) scale(1); }
+.rollpick-card .close {
+  position: absolute; top: 0.9rem; right: 0.9rem;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 1rem; color: var(--ink-soft);
+}
+.rollpick-title { margin: 0 0 0.2rem; font-family: var(--font-round); font-size: 1.25rem; }
+.rollpick-sub { margin: 0 0 1rem; color: var(--ink-soft); font-size: 0.85rem; }
+.rollpick-search { position: relative; margin-bottom: 0.9rem; }
+.rollpick-search-ic {
+  position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+  font-size: 0.9rem; opacity: 0.6; pointer-events: none;
+}
+.rollpick-search-input {
+  width: 100%;
+  padding: 0.7rem 1rem 0.7rem 2.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+  font: inherit; font-size: 0.9rem;
+}
+.rollpick-search-input:focus { outline: none; border-color: var(--clay-soft); }
+.rollpick-list {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+.rollpick-row {
+  display: flex; align-items: center; gap: 0.7rem;
+  width: 100%; text-align: left;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit; cursor: pointer;
+  transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.rollpick-row:hover { border-color: var(--clay-soft); background: var(--card); }
+.rollpick-em { font-size: 1.4rem; line-height: 1; flex: 0 0 auto; }
+.rollpick-info { display: flex; flex-direction: column; gap: 0.1rem; flex: 1 1 auto; min-width: 0; }
+.rollpick-name { font-weight: 600; font-size: 0.92rem; }
+.rollpick-role { font-size: 0.75rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rollpick-plus {
+  flex: 0 0 auto; width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: 50%; background: var(--clay-soft); color: var(--clay);
+  font-size: 1.1rem; font-weight: 700;
+}
+.rollpick-owned {
+  flex: 0 0 auto; font-size: 0.7rem; color: var(--sage);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+

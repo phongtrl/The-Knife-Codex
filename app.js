@@ -543,7 +543,6 @@ function renderAccount() {
       <div class="auth-actions">
         <button type="submit" class="btn primary small" id="auth-login">Log in</button>
         <button type="button" class="btn small" id="auth-signup">Sign up</button>
-        <button type="button" class="btn ghost small" id="auth-magic">Email me a link</button>
       </div>
       <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
       <div class="auth-divider"><span>on this device</span></div>
@@ -553,7 +552,6 @@ function renderAccount() {
   const form = $('#auth-form');
   form.addEventListener('submit', e => { e.preventDefault(); onLogin(); });
   $('#auth-signup').addEventListener('click', onSignup);
-  $('#auth-magic').addEventListener('click', onMagicLink);
   $('#auth-google').addEventListener('click', () => onOAuth('google'));
   $('#auth-reset').addEventListener('click', resetProgress);
 }
@@ -592,16 +590,6 @@ async function onSignup() {
   if (error) return authMsg(error.message, true);
   // If email confirmation is on, there's no session yet.
   if (!data.session) authMsg('Check your inbox to confirm your email, then log in.');
-}
-
-async function onMagicLink() {
-  const { name, email } = readAuthFields();
-  if (!email) return authMsg('Enter your email first.', true);
-  state.displayName = name;
-  authMsg('Sending your link…');
-  const { error } = await window.SB.signInMagic(email, name);
-  if (error) authMsg(error.message, true);
-  else authMsg('Check your inbox for a sign-in link.');
 }
 
 async function onOAuth(provider) {

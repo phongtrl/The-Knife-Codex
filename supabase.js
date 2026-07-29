@@ -56,11 +56,16 @@
       });
     },
     signInOAuth(provider) {
-      // provider: 'google' | 'discord'. Redirects the browser to the provider
-      // and back to redirectTo, where detectSessionInUrl completes sign-in.
+      // provider: 'google'. Redirects the browser to the provider and back to
+      // redirectTo, where detectSessionInUrl completes sign-in.
+      // prompt=select_account forces the account chooser every time so users
+      // aren't silently signed into the last-used account (esp. on mobile).
       return client.auth.signInWithOAuth({
         provider,
-        options: { redirectTo }
+        options: {
+          redirectTo,
+          queryParams: { prompt: 'select_account' }
+        }
       });
     },
     updateDisplayName(displayName) {

@@ -59,3 +59,15 @@ create policy "Owner updates progress"
   on public.progress for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+
+-- 3) GRANTS --------------------------------------------------
+-- RLS decides WHICH rows a role may touch, but the role must first hold the
+-- table-level privilege at all. Manually created tables don't always inherit
+-- these, so grant them explicitly (idempotent).
+--   anon          = signed-out visitors (leaderboard is public, read-only)
+--   authenticated = signed-in users (manage their own profile + progress)
+grant select on table public.profiles to anon;
+grant select, insert, update on table public.profiles to authenticated;
+grant select, insert, update on table public.progress to authenticated;
+

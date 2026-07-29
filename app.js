@@ -467,12 +467,14 @@ function renderAccount() {
         </div>
         <div class="auth-actions">
           <button type="button" class="btn ghost small" id="acct-logout">Log out</button>
+          <button type="button" class="btn ghost small danger" id="acct-reset">Reset progress</button>
         </div>
         <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
       </div>`;
 
     $('#acct-save-name').addEventListener('click', onSaveDisplayName);
     $('#acct-logout').addEventListener('click', () => window.SB.signOut());
+    $('#acct-reset').addEventListener('click', resetProgress);
     return;
   }
 
@@ -510,6 +512,8 @@ function renderAccount() {
         <button type="button" class="btn ghost small" id="auth-magic">Email me a link</button>
       </div>
       <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
+      <div class="auth-divider"><span>on this device</span></div>
+      <button type="button" class="btn ghost small danger" id="auth-reset">Reset progress</button>
     </form>`;
 
   const form = $('#auth-form');
@@ -518,6 +522,7 @@ function renderAccount() {
   $('#auth-magic').addEventListener('click', onMagicLink);
   $('#auth-google').addEventListener('click', () => onOAuth('google'));
   $('#auth-discord').addEventListener('click', () => onOAuth('discord'));
+  $('#auth-reset').addEventListener('click', resetProgress);
 }
 
 function authMsg(text, isError) {
@@ -587,6 +592,38 @@ async function onSaveDisplayName() {
     updateAuthUI();
     renderLeaderboard();
   } catch (e) { authMsg('Could not save your name.', true); }
+}
+
+/* Wipe all progress on this device (and in the cloud when signed in) after a
+   confirmation. Keeps the account/session intact. */
+async function resetProgress() {
+  const scope = state.user
+    ? 'This erases your codex progress on this device and in your account. This cannot be undone.'
+    : 'This erases your codex progress on this device. This cannot be undone.';
+  if (!window.confirm(`Reset all progress?\n\n${scope}`)) return;
+
+  state.xp = 0;
+  state.collected = new Set();
+  state.readStones = new Set();
+  state.readLibrary = new Set();
+  state.steelsRead = new Set();
+  state.libDiscovered = new Set();
+  state.recent = null;
+  state.roll = {};
+  state.achievements = new Set();
+  state.seenQuiz = new Set();
+  state.dojo = { rounds: 0, answered: 0, correct: 0, best: 0, perfect: 0, bestStreak: 0 };
+  state.daily = { date: '', done: false, score: 0, streak: 0, lastDate: '' };
+  state.dojoMode = 'all';
+
+  saveProgress();
+  if (state.user) await pushCloud();
+  refreshProgressViews();
+  renderAccount();
+  updateAuthUI();
+  renderLeaderboard();
+  loadLeaderboard();
+  toast('🧹 Progress reset.');
 }
 
 /* ---------- Top-bar account menu (top-right) ---------- */
@@ -688,7 +725,8 @@ async function onSignedIn(user) {
       if (prof && prof.display_name) state.displayName = prof.display_name;
     }
   } catch (e) { console.warn('[SB] pull failed', e); }
-  saveProgress();          // persist merged result locally + push to cloud
+  saveProgress();          // persist merged result locally + schedule cloud sync
+  await pushCloud();       // and push local-into-account immediately (no debounce)
   refreshProgressViews();
   renderAccount();
   updateAuthUI();

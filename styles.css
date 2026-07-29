@@ -189,6 +189,8 @@ body {
 .btn.ghost { background: transparent; color: var(--ink); }
 .btn.ghost:hover { background: var(--card); }
 .btn.clay { background: var(--clay); border-color: var(--clay); }
+.btn.danger { color: var(--clay); }
+.btn.danger:hover { background: rgba(180,103,76,0.1); border-color: var(--clay-soft); }
 .btn.small { padding: 0.5rem 1.1rem; font-size: 0.8rem; }
 
 /* ---------- Section headings ---------- */

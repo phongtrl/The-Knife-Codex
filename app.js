@@ -341,6 +341,41 @@ function toast(msg) {
   setTimeout(() => el.remove(), 3200);
 }
 
+/* In-app confirmation dialog. Resolves true if confirmed, false otherwise.
+   opts: { title, message, confirmText, cancelText, emoji }. */
+function confirmDialog(opts = {}) {
+  const back = $('#confirm-back');
+  if (!back) return Promise.resolve(window.confirm(opts.message || 'Are you sure?'));
+  $('#confirm-emoji').textContent = opts.emoji || '⚠️';
+  $('#confirm-title').textContent = opts.title || 'Are you sure?';
+  $('#confirm-msg').textContent = opts.message || '';
+  const okBtn = $('#confirm-ok');
+  const cancelBtn = $('#confirm-cancel');
+  okBtn.textContent = opts.confirmText || 'Confirm';
+  cancelBtn.textContent = opts.cancelText || 'Cancel';
+
+  return new Promise(resolve => {
+    const close = result => {
+      back.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      back.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onOk = () => close(true);
+    const onCancel = () => close(false);
+    const onBackdrop = e => { if (e.target === back) close(false); };
+    const onKey = e => { if (e.key === 'Escape') close(false); };
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    back.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    back.classList.add('open');
+    okBtn.focus();
+  });
+}
+
 function diffDots(level) {
   let out = '<span class="diff-dots">';
   for (let i = 1; i <= 5; i++) out += `<span class="${i <= level ? 'on' : ''}"></span>`;
@@ -600,7 +635,14 @@ async function resetProgress() {
   const scope = state.user
     ? 'This erases your codex progress on this device and in your account. This cannot be undone.'
     : 'This erases your codex progress on this device. This cannot be undone.';
-  if (!window.confirm(`Reset all progress?\n\n${scope}`)) return;
+  const ok = await confirmDialog({
+    emoji: '🧹',
+    title: 'Reset all progress?',
+    message: scope,
+    confirmText: 'Reset progress',
+    cancelText: 'Keep my progress'
+  });
+  if (!ok) return;
 
   state.xp = 0;
   state.collected = new Set();

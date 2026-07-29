@@ -526,6 +526,24 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   transition: transform 0.35s var(--ease);
 }
 .modal-back.open .modal { transform: translateY(0) scale(1); }
+
+/* Confirm / alert dialog */
+.confirm-back { z-index: 120; }
+.confirm {
+  background: var(--card);
+  border-radius: calc(var(--radius) + 6px);
+  width: min(400px, 100%);
+  padding: 1.9rem 1.8rem 1.6rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transform: translateY(20px) scale(0.98);
+  transition: transform 0.35s var(--ease);
+}
+.confirm-back.open .confirm { transform: translateY(0) scale(1); }
+.confirm-emoji { font-size: 2.2rem; line-height: 1; margin-bottom: 0.6rem; }
+.confirm-title { margin: 0 0 0.5rem; font-family: var(--font-round); font-size: 1.2rem; }
+.confirm-msg { margin: 0 0 1.4rem; color: var(--ink-soft); font-size: 0.92rem; line-height: 1.5; }
+.confirm-actions { display: flex; gap: 0.6rem; justify-content: center; }
 .modal-hero {
   padding: 1.8rem 1.8rem 1.4rem;
   position: relative;

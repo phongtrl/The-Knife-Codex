@@ -1133,6 +1133,12 @@ function renderLibrary() {
   const codexNames = new Set(state.knives.map(k => k.name.toLowerCase()));
   const q = state.librarySearch.trim().toLowerCase();
 
+  // Remember which folders are currently open so re-rendering after a
+  // discovery keeps them expanded — makes it easy to click the next blade.
+  const openGroups = new Set(
+    $$('.lib-group[open]', box).map(g => g.dataset.lib)
+  );
+
   // Filter families/items by the archive search. A family whose title matches
   // keeps all its blades; otherwise only matching blades are shown.
   const groups = LIBRARY.map(g => {
@@ -1180,9 +1186,11 @@ function renderLibrary() {
         </button>`;
     }).join('');
 
-    // Expand families automatically while searching so matches are visible.
+    // Expand families automatically while searching, and keep any folder that
+    // was already open so discovering a blade doesn't collapse it.
+    const open = q || openGroups.has(g.title);
     return `
-      <details class="lib-group" data-lib="${g.title}"${q ? ' open' : ''}>
+      <details class="lib-group" data-lib="${g.title}"${open ? ' open' : ''}>
         <summary>
           <span class="lib-g-em">${g.emoji}</span>
           <span class="lib-g-text">

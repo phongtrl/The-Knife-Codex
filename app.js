@@ -484,8 +484,15 @@ function renderProfile() {
 /* Renders the Account panel in the Profile view for the signed-in / signed-out
    state and wires up its buttons. */
 function renderAccount() {
-  const box = $('#account');
+  // When signed out, the auth form lives on the intro gate; when signed in,
+  // it lives in the top-bar popover. Render into exactly one container and
+  // clear the other so element IDs (#auth-email, #auth-msg…) stay unique.
+  const gate = $('#gate-account');
+  const pop = $('#account');
+  const box = (!state.user && gate) ? gate : pop;
   if (!box) return;
+  if (gate && gate !== box) gate.innerHTML = '';
+  if (pop && pop !== box) pop.innerHTML = '';
 
   if (!window.SB || !window.SB.ready) {
     box.innerHTML = `<p class="empty-state">Cloud sync is unavailable right now. Your progress is still saved on this device.</p>`;
@@ -698,11 +705,36 @@ async function onDeleteAccount() {
   toast('Your account has been deleted.');
 }
 
+/* Render the small teaser strip of knives on the intro gate. */
+function renderIntroPreview() {
+  const box = $('#intro-preview');
+  if (!box) return;
+  const picks = ['gyuto', 'santoku', 'nakiri', 'yanagiba', 'deba', 'petty'];
+  const knives = picks
+    .map(id => state.byId[id])
+    .filter(Boolean)
+    .concat(state.knives)                 // fallback fill if an id is missing
+    .filter((k, i, a) => a.indexOf(k) === i)
+    .slice(0, 6);
+  box.innerHTML = knives.map((k, i) => {
+    const locked = i >= 2;                // first two shown, rest teased/blurred
+    return `
+      <div class="intro-tease${locked ? ' locked' : ''}">
+        <span class="intro-tease-em">${k.emoji || '🔪'}</span>
+        <span class="intro-tease-name">${escapeHtml(k.name)}</span>
+        <span class="intro-tease-kanji">${escapeHtml(k.kanji || '')}</span>
+        ${locked ? '<span class="intro-tease-lock" aria-hidden="true">🔒</span>' : ''}
+      </div>`;
+  }).join('');
+}
+
 /* ---------- Top-bar account menu (top-right) ---------- */
 /* Show progress stats + rank only when signed in; otherwise just the Sign in
    button. Also keeps the account button label current. */
 function updateAuthUI() {
   const on = !!state.user;
+  // Full gate: the app chrome stays hidden behind the intro page until signed in.
+  document.body.classList.toggle('gated', !on);
   ['#hud-stat-collected', '#hud-stat-xp', '#hud-xp-track', '#hud-rank'].forEach(sel => {
     const el = $(sel);
     if (el) el.hidden = !on;
@@ -2779,6 +2811,7 @@ async function init() {
   renderDaily();
   renderProfile();
   renderDashboard();
+  renderIntroPreview();
   updateHud();
   checkAchievements();
 

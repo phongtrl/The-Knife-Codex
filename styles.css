@@ -76,7 +76,7 @@ body {
   flex: 0 0 auto;
   overflow: hidden;
 }
-.brand .mark svg { width: 100%; height: 100%; display: block; mix-blend-mode: multiply; }
+.brand .mark svg { width: 100%; height: 100%; display: block; }
 .brand h1 {
   font-size: 1.05rem;
   font-weight: 700;
@@ -1157,6 +1157,210 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   margin-left: 0.3rem;
 }
 .dojo-mode-chip.active .m-count { opacity: 0.8; }
+
+/* ============================================================
+   Intro / sign-in gate
+   Signed-out visitors see only this. The app chrome is hidden
+   via body.gated until Supabase reports an active session.
+   ============================================================ */
+body.gated { overflow: hidden; }
+body.gated .topbar,
+body.gated .mainnav,
+body.gated .views { display: none !important; }
+
+.intro-gate { display: none; }
+body.gated .intro-gate {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow-y: auto;
+  background:
+    radial-gradient(1100px 620px at 118% 4%, rgba(201, 166, 120, 0.20), transparent 58%),
+    radial-gradient(900px 520px at -10% 112%, rgba(125, 138, 111, 0.16), transparent 55%),
+    var(--paper);
+}
+
+.intro-wm {
+  position: fixed;
+  right: -3vw;
+  bottom: -6vh;
+  font-family: var(--font-round);
+  font-size: 46vh;
+  line-height: 1;
+  color: var(--ink);
+  opacity: 0.035;
+  pointer-events: none;
+  user-select: none;
+}
+
+.intro-inner {
+  position: relative;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) clamp(1.2rem, 4vw, 2.4rem) 3rem;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(1.6rem, 4vw, 3.2rem);
+  align-items: center;
+  min-height: 100%;
+}
+
+/* ---- Hero column ---- */
+.intro-hero { animation: introRise 0.7s var(--ease) both; }
+
+/* Brand lockup: logo + wordmark, mirroring the top-bar treatment so the
+   mark reads as a logo rather than a stray box. */
+.intro-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 1.4rem;
+}
+.intro-mark {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.intro-mark svg { width: 100%; height: 100%; display: block; }
+.intro-wordmark { display: flex; flex-direction: column; line-height: 1.1; }
+.intro-wordmark-name {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.intro-wordmark-sub {
+  font-family: var(--font-round);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.intro-hero .eyebrow { display: inline-block; margin-bottom: 0.5rem; }
+
+.intro-title {
+  font-family: var(--font-round);
+  font-weight: 700;
+  font-size: clamp(2rem, 4.4vw, 2.9rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.intro-title .accent { color: var(--clay); }
+
+.intro-lede {
+  max-width: 52ch;
+  margin-top: 1rem;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+.intro-lede strong { color: var(--ink); }
+
+/* ---- Feature highlights ---- */
+.intro-features {
+  list-style: none;
+  margin: 1.6rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+.intro-feature {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.85rem 0.95rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.intro-feature:hover { transform: translateY(-2px); border-color: var(--wood); }
+.intro-feat-ic { font-size: 1.35rem; line-height: 1; }
+.intro-feature div { display: flex; flex-direction: column; gap: 2px; }
+.intro-feature b { font-size: 0.95rem; color: var(--ink); }
+.intro-feature span { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.4; }
+
+/* ---- Knife teaser strip ---- */
+.intro-preview {
+  margin-top: 1.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.intro-tease {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: 84px;
+  padding: 0.7rem 0.4rem;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  overflow: hidden;
+}
+.intro-tease-em { font-size: 1.5rem; line-height: 1; }
+.intro-tease-name { font-size: 0.72rem; font-weight: 500; color: var(--ink); }
+.intro-tease-kanji { font-family: var(--font-round); font-size: 0.72rem; color: var(--ink-soft); }
+.intro-tease.locked .intro-tease-em,
+.intro-tease.locked .intro-tease-name,
+.intro-tease.locked .intro-tease-kanji { filter: blur(3px); opacity: 0.65; }
+.intro-tease-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+/* ---- Auth column ---- */
+.intro-auth { animation: introRise 0.7s 0.08s var(--ease) both; }
+.intro-auth-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(1.4rem, 3vw, 2rem);
+}
+.intro-auth-title {
+  font-family: var(--font-round);
+  font-size: 1.35rem;
+  color: var(--ink);
+}
+.intro-auth-sub {
+  margin: 0.4rem 0 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+@keyframes introRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 860px) {
+  .intro-inner {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    padding-top: clamp(1.6rem, 8vw, 3rem);
+  }
+  .intro-auth { order: -1; }
+  .intro-features { grid-template-columns: 1fr; }
+}
+@media (max-width: 420px) {
+  .intro-preview { justify-content: space-between; }
+  .intro-tease { width: calc(33.333% - 0.4rem); }
+}
 .quiz-streak {
   color: var(--wood);
   font-family: var(--font-round);

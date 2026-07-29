@@ -630,6 +630,22 @@ async function resetProgress() {
   });
   if (!ok) return;
 
+  clearProgressState();
+
+  saveProgress();
+  if (state.user) await pushCloud();
+  refreshProgressViews();
+  renderAccount();
+  updateAuthUI();
+  renderLeaderboard();
+  loadLeaderboard();
+  toast('🧹 Progress reset.');
+}
+
+/* Zero out every piece of saved progress in memory (does NOT persist or push —
+   the caller decides that). Shared by resetProgress() and the "start fresh"
+   path when signing into a new account. */
+function clearProgressState() {
   state.xp = 0;
   state.collected = new Set();
   state.readStones = new Set();
@@ -643,15 +659,6 @@ async function resetProgress() {
   state.dojo = { rounds: 0, answered: 0, correct: 0, best: 0, perfect: 0, bestStreak: 0 };
   state.daily = { date: '', done: false, score: 0, streak: 0, lastDate: '' };
   state.dojoMode = 'all';
-
-  saveProgress();
-  if (state.user) await pushCloud();
-  refreshProgressViews();
-  renderAccount();
-  updateAuthUI();
-  renderLeaderboard();
-  loadLeaderboard();
-  toast('🧹 Progress reset.');
 }
 
 /* Permanently delete the signed-in user's account (auth row + cloud profile &
@@ -876,9 +883,33 @@ async function onSignedIn(user) {
   if (meta.display_name) state.displayName = meta.display_name;
   renderAccount();
   toast('☁️ Signed in — syncing your codex…');
+
+  // Does this device currently hold guest progress worth keeping?
+  const localHasProgress = (state.xp || 0) > 0 || state.collected.size > 0
+    || Object.keys(state.roll).length > 0;
+
   try {
     const remote = await window.SB.fetchProgress(user.id);
-    mergeRemote(remote);
+    const remoteHasProgress = !!remote && ((remote.xp || 0) > 0
+      || (Array.isArray(remote.collected) && remote.collected.length > 0)
+      || (remote.roll && Object.keys(remote.roll).length > 0));
+
+    if (remoteHasProgress) {
+      // Returning account: merge cloud save with anything newer on this device.
+      mergeRemote(remote);
+    } else if (localHasProgress) {
+      // Empty/new account but this device has guest progress. Ask before
+      // importing so a fresh account doesn't silently inherit old device data.
+      const keep = await confirmDialog({
+        emoji: '☁️',
+        title: 'Import this device’s progress?',
+        message: 'This account has no saved progress yet. Bring the progress from this device into it, or start this account fresh?',
+        confirmText: 'Import progress',
+        cancelText: 'Start fresh'
+      });
+      if (!keep) clearProgressState();
+    }
+
     if (!state.displayName) {
       const prof = await window.SB.fetchProfile(user.id);
       if (prof && prof.display_name) state.displayName = prof.display_name;

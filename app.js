@@ -88,7 +88,11 @@ const state = {
   // Daily Dojo tracking (persisted).
   daily: { date: '', done: false, score: 0, streak: 0, lastDate: '' },
   modalId: null,     // id of the knife currently shown in the detail modal
-  modalKind: null    // 'knife' | 'stone' | 'steel'
+  modalKind: null,   // 'knife' | 'stone' | 'steel'
+  // ---- Cloud / account (Supabase) ----
+  user: null,          // signed-in Supabase user, or null
+  displayName: '',     // public leaderboard handle
+  leaderboard: []      // cached leaderboard rows
 };
 
 /* Local calendar date as YYYY-MM-DD (used to seed and gate the Daily Dojo). */
@@ -102,56 +106,125 @@ function yesterdayKey() {
 }
 
 /* ---------- Persistence ---------- */
+/* The full save payload as a plain object — used for both localStorage and the
+   Supabase cloud copy. */
+function progressPayload() {
+  return {
+    xp: state.xp,
+    collected: [...state.collected],
+    readStones: [...state.readStones],
+    readLibrary: [...state.readLibrary],
+    steelsRead: [...state.steelsRead],
+    libDiscovered: [...state.libDiscovered],
+    recent: state.recent,
+    roll: state.roll,
+    achievements: [...state.achievements],
+    seenQuiz: [...state.seenQuiz],
+    dojo: state.dojo,
+    daily: state.daily,
+    dojoMode: state.dojoMode
+  };
+}
+
+/* Load a payload object into state (replacing current progress). */
+function applyPayload(data) {
+  if (!data) return;
+  state.xp = data.xp || 0;
+  state.collected = new Set(data.collected || []);
+  state.readStones = new Set(data.readStones || []);
+  state.readLibrary = new Set(data.readLibrary || []);
+  state.steelsRead = new Set(data.steelsRead || []);
+  state.libDiscovered = new Set(data.libDiscovered || []);
+  state.recent = data.recent || null;
+  state.roll = data.roll || {};
+  // Migrate legacy single-record ownership -> an array of records so a knife
+  // can be owned more than once.
+  Object.keys(state.roll).forEach(id => {
+    const r = state.roll[id];
+    if (Array.isArray(r)) return;
+    if (r && r.owned) {
+      const { owned, ...rest } = r;
+      state.roll[id] = [rest];
+    } else {
+      delete state.roll[id];
+    }
+  });
+  state.achievements = new Set(data.achievements || []);
+  state.seenQuiz = new Set(data.seenQuiz || []);
+  if (data.dojo) state.dojo = { ...state.dojo, ...data.dojo };
+  if (data.daily) state.daily = { ...state.daily, ...data.daily };
+  if (data.dojoMode) state.dojoMode = data.dojoMode;
+}
+
 function loadProgress() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return;
-    const data = JSON.parse(raw);
-    state.xp = data.xp || 0;
-    state.collected = new Set(data.collected || []);
-    state.readStones = new Set(data.readStones || []);
-    state.readLibrary = new Set(data.readLibrary || []);
-    state.steelsRead = new Set(data.steelsRead || []);
-    state.libDiscovered = new Set(data.libDiscovered || []);
-    state.recent = data.recent || null;
-    state.roll = data.roll || {};
-    // Migrate legacy single-record ownership -> an array of records so a knife
-    // can be owned more than once.
-    Object.keys(state.roll).forEach(id => {
-      const r = state.roll[id];
-      if (Array.isArray(r)) return;
-      if (r && r.owned) {
-        const { owned, ...rest } = r;
-        state.roll[id] = [rest];
-      } else {
-        delete state.roll[id];
-      }
-    });
-    state.achievements = new Set(data.achievements || []);
-    state.seenQuiz = new Set(data.seenQuiz || []);
-    if (data.dojo) state.dojo = { ...state.dojo, ...data.dojo };
-    if (data.daily) state.daily = { ...state.daily, ...data.daily };
-    if (data.dojoMode) state.dojoMode = data.dojoMode;
+    applyPayload(JSON.parse(raw));
   } catch (e) { /* ignore corrupt store */ }
 }
 function saveProgress() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({
-      xp: state.xp,
-      collected: [...state.collected],
-      readStones: [...state.readStones],
-      readLibrary: [...state.readLibrary],
-      steelsRead: [...state.steelsRead],
-      libDiscovered: [...state.libDiscovered],
-      recent: state.recent,
-      roll: state.roll,
-      achievements: [...state.achievements],
-      seenQuiz: [...state.seenQuiz],
-      dojo: state.dojo,
-      daily: state.daily,
-      dojoMode: state.dojoMode
-    }));
+    localStorage.setItem(STORE_KEY, JSON.stringify(progressPayload()));
   } catch (e) { /* storage may be unavailable */ }
+  scheduleCloudSync();
+}
+
+/* ---------- Cloud sync (Supabase) ---------- */
+let cloudTimer = null;
+
+/* Queue a debounced push of the current progress to the cloud. */
+function scheduleCloudSync() {
+  if (!state.user || !window.SB || !window.SB.ready) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(pushCloud, 1200);
+}
+
+/* Push the current progress + public leaderboard stats to Supabase. */
+async function pushCloud() {
+  if (!state.user || !window.SB || !window.SB.ready) return;
+  const uid = state.user.id;
+  try {
+    await window.SB.saveProgress(uid, progressPayload());
+    await window.SB.upsertProfile(uid, {
+      display_name: state.displayName || null,
+      xp: state.xp,
+      knives_found: discoveredKnives()
+    });
+  } catch (e) { console.warn('[SB] cloud push failed', e); }
+}
+
+/* Merge a remote payload into the current (local) state without losing local
+   progress: sets union, numeric stats take the max, roll fills gaps only. */
+function mergeRemote(remote) {
+  if (!remote) return;
+  state.xp = Math.max(state.xp || 0, remote.xp || 0);
+  const addAll = (set, arr) => (arr || []).forEach(v => set.add(v));
+  addAll(state.collected, remote.collected);
+  addAll(state.readStones, remote.readStones);
+  addAll(state.readLibrary, remote.readLibrary);
+  addAll(state.steelsRead, remote.steelsRead);
+  addAll(state.libDiscovered, remote.libDiscovered);
+  addAll(state.achievements, remote.achievements);
+  addAll(state.seenQuiz, remote.seenQuiz);
+  if (remote.recent && !state.recent) state.recent = remote.recent;
+  if (remote.roll) {
+    Object.keys(remote.roll).forEach(id => {
+      if (!state.roll[id]) state.roll[id] = remote.roll[id];
+    });
+  }
+  if (remote.dojo) {
+    Object.keys(state.dojo).forEach(k => {
+      state.dojo[k] = Math.max(state.dojo[k] || 0, remote.dojo[k] || 0);
+    });
+  }
+  if (remote.daily) {
+    if ((remote.daily.date || '') > (state.daily.date || '')) {
+      state.daily = { ...state.daily, ...remote.daily };
+    } else {
+      state.daily.streak = Math.max(state.daily.streak || 0, remote.daily.streak || 0);
+    }
+  }
 }
 
 /* ---------- Helpers ---------- */
@@ -363,7 +436,250 @@ function renderProfile() {
   renderRoll();
 }
 
-/* ---------- Codex ---------- */
+/* ---------- Account & cloud sync UI ---------- */
+/* Renders the Account panel in the Profile view for the signed-in / signed-out
+   state and wires up its buttons. */
+function renderAccount() {
+  const box = $('#account');
+  if (!box) return;
+
+  if (!window.SB || !window.SB.ready) {
+    box.innerHTML = `<p class="empty-state">Cloud sync is unavailable right now. Your progress is still saved on this device.</p>`;
+    return;
+  }
+
+  if (state.user) {
+    const email = state.user.email || '';
+    const name = state.displayName || email.split('@')[0] || 'Chef';
+    box.innerHTML = `
+      <div class="account-in">
+        <div class="account-who">
+          <span class="account-em">☁️</span>
+          <div class="account-who-text">
+            <div class="account-name">${escapeHtml(name)}</div>
+            <div class="account-sub">${escapeHtml(email)} · synced</div>
+          </div>
+        </div>
+        <div class="account-edit">
+          <input type="text" id="acct-name" class="auth-input" maxlength="24"
+                 value="${escapeHtml(state.displayName)}" placeholder="Display name" aria-label="Display name" />
+          <button type="button" class="btn small" id="acct-save-name">Save</button>
+        </div>
+        <div class="auth-actions">
+          <button type="button" class="btn ghost small" id="acct-sync">Sync now</button>
+          <button type="button" class="btn ghost small" id="acct-logout">Log out</button>
+        </div>
+        <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
+      </div>`;
+
+    $('#acct-save-name').addEventListener('click', onSaveDisplayName);
+    $('#acct-sync').addEventListener('click', onSyncNow);
+    $('#acct-logout').addEventListener('click', () => window.SB.signOut());
+    return;
+  }
+
+  box.innerHTML = `
+    <form class="auth-form" id="auth-form" autocomplete="on">
+      <div class="auth-social">
+        <button type="button" class="btn oauth google" id="auth-google">
+          <span class="oauth-ic" aria-hidden="true">G</span> Continue with Google
+        </button>
+        <button type="button" class="btn oauth discord" id="auth-discord">
+          <span class="oauth-ic" aria-hidden="true">🎮</span> Continue with Discord
+        </button>
+      </div>
+      <div class="auth-divider"><span>or with email</span></div>
+      <input type="text" id="auth-name" class="auth-input" maxlength="24"
+             placeholder="Display name (for the leaderboard)" autocomplete="nickname" />
+      <input type="email" id="auth-email" class="auth-input"
+             placeholder="you@example.com" autocomplete="email" required />
+      <input type="password" id="auth-pass" class="auth-input"
+             placeholder="Password (min 6 characters)" autocomplete="current-password" />
+      <div class="auth-actions">
+        <button type="submit" class="btn primary small" id="auth-login">Log in</button>
+        <button type="button" class="btn small" id="auth-signup">Sign up</button>
+        <button type="button" class="btn ghost small" id="auth-magic">Email me a link</button>
+      </div>
+      <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
+    </form>`;
+
+  const form = $('#auth-form');
+  form.addEventListener('submit', e => { e.preventDefault(); onLogin(); });
+  $('#auth-signup').addEventListener('click', onSignup);
+  $('#auth-magic').addEventListener('click', onMagicLink);
+  $('#auth-google').addEventListener('click', () => onOAuth('google'));
+  $('#auth-discord').addEventListener('click', () => onOAuth('discord'));
+}
+
+function authMsg(text, isError) {
+  const el = $('#auth-msg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('is-error', !!isError);
+}
+
+function readAuthFields() {
+  return {
+    name: ($('#auth-name') && $('#auth-name').value.trim()) || '',
+    email: ($('#auth-email') && $('#auth-email').value.trim()) || '',
+    pass: ($('#auth-pass') && $('#auth-pass').value) || ''
+  };
+}
+
+async function onLogin() {
+  const { email, pass } = readAuthFields();
+  if (!email || !pass) return authMsg('Enter your email and password.', true);
+  authMsg('Signing in…');
+  const { error } = await window.SB.signInPassword(email, pass);
+  if (error) authMsg(error.message, true);
+  // Success is handled by the auth-state listener.
+}
+
+async function onSignup() {
+  const { name, email, pass } = readAuthFields();
+  if (!email || !pass) return authMsg('Enter your email and password.', true);
+  if (pass.length < 6) return authMsg('Password must be at least 6 characters.', true);
+  state.displayName = name;
+  authMsg('Creating your account…');
+  const { data, error } = await window.SB.signUpPassword(email, pass, name);
+  if (error) return authMsg(error.message, true);
+  // If email confirmation is on, there's no session yet.
+  if (!data.session) authMsg('Check your inbox to confirm your email, then log in.');
+}
+
+async function onMagicLink() {
+  const { name, email } = readAuthFields();
+  if (!email) return authMsg('Enter your email first.', true);
+  state.displayName = name;
+  authMsg('Sending your link…');
+  const { error } = await window.SB.signInMagic(email, name);
+  if (error) authMsg(error.message, true);
+  else authMsg('Check your inbox for a sign-in link.');
+}
+
+async function onOAuth(provider) {
+  const label = provider === 'google' ? 'Google' : 'Discord';
+  authMsg(`Redirecting to ${label}…`);
+  const { error } = await window.SB.signInOAuth(provider);
+  // On success the browser navigates away; only errors return here.
+  if (error) authMsg(error.message, true);
+}
+
+async function onSaveDisplayName() {
+  const input = $('#acct-name');
+  if (!input) return;
+  const name = input.value.trim();
+  state.displayName = name;
+  authMsg('Saving…');
+  try {
+    await window.SB.updateDisplayName(name);
+    await pushCloud();
+    authMsg('Display name saved.');
+    renderLeaderboard();
+  } catch (e) { authMsg('Could not save your name.', true); }
+}
+
+async function onSyncNow() {
+  authMsg('Syncing…');
+  await pushCloud();
+  await loadLeaderboard();
+  authMsg('Synced.');
+}
+
+/* ---------- Leaderboard ---------- */
+async function loadLeaderboard() {
+  if (!window.SB || !window.SB.ready) return;
+  try {
+    state.leaderboard = await window.SB.fetchLeaderboard(25);
+  } catch (e) { console.warn('[SB] leaderboard', e); }
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  const box = $('#leaderboard');
+  if (!box) return;
+  if (!window.SB || !window.SB.ready) {
+    box.innerHTML = `<p class="empty-state">The leaderboard is unavailable right now.</p>`;
+    return;
+  }
+  const rows = state.leaderboard || [];
+  if (!rows.length) {
+    box.innerHTML = `<p class="empty-state">No ranked chefs yet — sign in and start discovering to claim the top spot.</p>`;
+    return;
+  }
+  const myName = state.displayName;
+  box.innerHTML = rows.map((r, i) => {
+    const rank = rankFor(r.xp || 0);
+    const me = state.user && myName && r.display_name === myName;
+    const pos = i + 1;
+    const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos;
+    return `
+      <div class="lb-row${me ? ' me' : ''}">
+        <span class="lb-pos">${medal}</span>
+        <span class="lb-em">${rank.emoji}</span>
+        <span class="lb-name">${escapeHtml(r.display_name || 'Anonymous chef')}</span>
+        <span class="lb-knives">${r.knives_found || 0} 🔪</span>
+        <span class="lb-xp">${r.xp || 0} XP</span>
+      </div>`;
+  }).join('');
+}
+
+/* ---------- Auth wiring ---------- */
+/* Subscribe to Supabase auth changes; the callback fires immediately with the
+   current session on load, so this handles both initial sign-in and later
+   login/logout events. */
+function initAuth() {
+  renderAccount();
+  renderLeaderboard();
+  loadLeaderboard();
+  if (!window.SB || !window.SB.ready) return;
+  window.SB.onAuthChange(session => {
+    const u = session ? session.user : null;
+    if (u && (!state.user || state.user.id !== u.id)) onSignedIn(u);
+    else if (!u && state.user) onSignedOut();
+    else renderAccount();
+  });
+}
+
+async function onSignedIn(user) {
+  state.user = user;
+  const meta = user.user_metadata || {};
+  if (meta.display_name) state.displayName = meta.display_name;
+  renderAccount();
+  toast('☁️ Signed in — syncing your codex…');
+  try {
+    const remote = await window.SB.fetchProgress(user.id);
+    mergeRemote(remote);
+    if (!state.displayName) {
+      const prof = await window.SB.fetchProfile(user.id);
+      if (prof && prof.display_name) state.displayName = prof.display_name;
+    }
+  } catch (e) { console.warn('[SB] pull failed', e); }
+  saveProgress();          // persist merged result locally + push to cloud
+  refreshProgressViews();
+  renderAccount();
+  loadLeaderboard();
+}
+
+function onSignedOut() {
+  state.user = null;
+  renderAccount();
+  renderLeaderboard();
+  toast('Signed out. Your progress stays on this device.');
+}
+
+/* Re-render every view that reflects saved progress (after a cloud merge). */
+function refreshProgressViews() {
+  renderGrid();
+  renderLibrary();
+  renderSteelGrid();
+  renderProfile();
+  renderDashboard();
+  updateHud();
+  checkAchievements();
+}
+
+
 function renderFilters() {
   const rarities = ['all', ...new Set(state.knives.map(k => k.rarity))];
   const box = $('#filters');
@@ -1248,7 +1564,7 @@ function switchView(name) {
   if (name === 'codex') renderSteelGrid();
   if (name === 'dojo') renderDaily();
   if (name === 'learn') { renderWizard(); renderFixit(); renderAnatomy(); renderVs(); }
-  if (name === 'profile') renderProfile();
+  if (name === 'profile') { renderProfile(); renderAccount(); loadLeaderboard(); }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2108,6 +2424,9 @@ async function init() {
   wireSearch('#codex-search', '#codex-search-clear', v => { state.search = v; renderGrid(); });
   wireSearch('#library-search', '#library-search-clear', v => { state.librarySearch = v; renderLibrary(); });
   wireSearch('#steel-search', '#steel-search-clear', v => { state.steelSearch = v; renderSteelGrid(); });
+
+  // Cloud accounts, progress sync, and the leaderboard (Supabase).
+  initAuth();
 }
 
 /* Bind an input + clear button to a filtering callback. */

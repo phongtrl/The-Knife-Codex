@@ -266,15 +266,37 @@
   <!-- ===== PROFILE VIEW ===== -->
   <section class="view" id="view-profile" data-view="profile" hidden>
 
+    <section class="section wrap" id="account-section">
+      <div class="section-head">
+        <div>
+          <div class="kicker">Cloud Sync</div>
+          <h3>Account</h3>
+        </div>
+        <p>Sign in to save your codex to the cloud and appear on the leaderboard.</p>
+      </div>
+      <div class="account" id="account"><!-- injected by JS --></div>
+    </section>
+
     <section class="section wrap">
       <div class="section-head">
         <div>
           <div class="kicker">Your Dojo</div>
           <h3>Profile</h3>
         </div>
-        <p>Your rank, collection, and Dojo record — all saved on this device.</p>
+        <p>Your rank, collection, and Dojo record — saved on this device and synced when signed in.</p>
       </div>
       <div class="profile" id="profile"><!-- injected by JS --></div>
+    </section>
+
+    <section class="section wrap" id="leaderboard-section">
+      <div class="section-head sub">
+        <div>
+          <div class="kicker">The Rankings</div>
+          <h3>Leaderboard</h3>
+        </div>
+        <p>Top chefs by XP across every kitchen.</p>
+      </div>
+      <div class="leaderboard" id="leaderboard"><!-- injected by JS --></div>
     </section>
 
     <section class="section wrap" id="achievements-section">
@@ -411,8 +433,10 @@
   <div class="toast-zone" id="toast-zone"></div>
   <div class="ach-zone" id="ach-zone"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="knives-data.js"></script>
   <script src="codex-data.js"></script>
+  <script src="supabase.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1561,3 +1561,108 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .toast { max-width: 90vw; text-align: center; }
 }
 
+/* ============================================================
+   Account, cloud sync & leaderboard (Supabase)
+   ============================================================ */
+.account { margin-top: 0.4rem; }
+.auth-form { display: flex; flex-direction: column; gap: 0.7rem; max-width: 420px; }
+.auth-input {
+  font-family: var(--font);
+  width: 100%;
+  font-size: 0.92rem;
+  color: var(--ink);
+  padding: 0.75rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.auth-input::placeholder { color: var(--ink-soft); }
+.auth-input:focus {
+  outline: none;
+  border-color: var(--clay-soft);
+  box-shadow: var(--shadow-soft);
+}
+.auth-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
+.auth-msg { font-size: 0.85rem; color: var(--sage); min-height: 1.1em; margin: 0.1rem 0 0; }
+.auth-msg.is-error { color: var(--clay); }
+
+/* Social sign-in */
+.auth-social { display: flex; flex-direction: column; gap: 0.55rem; }
+.btn.oauth {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.9rem;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn.oauth:hover { background: var(--paper-2); }
+.btn.oauth .oauth-ic {
+  display: inline-grid;
+  place-items: center;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #fff;
+}
+.btn.oauth.google .oauth-ic { background: #4285f4; }
+.btn.oauth.discord .oauth-ic { background: #5865f2; font-size: 0.7rem; }
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  margin: 0.2rem 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.account-in { display: flex; flex-direction: column; gap: 0.9rem; max-width: 460px; }
+.account-who { display: flex; align-items: center; gap: 0.8rem; }
+.account-em { font-size: 1.7rem; }
+.account-name { font-weight: 600; color: var(--ink); font-size: 1.05rem; }
+.account-sub { font-size: 0.82rem; color: var(--ink-soft); }
+.account-edit { display: flex; gap: 0.5rem; align-items: center; }
+.account-edit .auth-input { max-width: 240px; }
+
+/* ---------- Leaderboard ---------- */
+.leaderboard { display: flex; flex-direction: column; gap: 0.4rem; }
+.lb-row {
+  display: grid;
+  grid-template-columns: 2.2rem 1.8rem 1fr auto auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.lb-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+.lb-row.me { border-color: var(--clay); background: var(--paper-2); }
+.lb-pos { font-weight: 700; color: var(--ink-soft); text-align: center; font-size: 0.95rem; }
+.lb-em { font-size: 1.2rem; text-align: center; }
+.lb-name {
+  font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lb-knives { font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
+.lb-xp { font-weight: 600; color: var(--clay); white-space: nowrap; font-size: 0.9rem; }
+
+@media (max-width: 520px) {
+  .lb-row { grid-template-columns: 1.8rem 1.4rem 1fr auto; gap: 0.5rem; padding: 0.6rem 0.7rem; }
+  .lb-knives { display: none; }
+}
+

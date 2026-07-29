@@ -466,14 +466,12 @@ function renderAccount() {
           <button type="button" class="btn small" id="acct-save-name">Save</button>
         </div>
         <div class="auth-actions">
-          <button type="button" class="btn ghost small" id="acct-sync">Sync now</button>
           <button type="button" class="btn ghost small" id="acct-logout">Log out</button>
         </div>
         <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
       </div>`;
 
     $('#acct-save-name').addEventListener('click', onSaveDisplayName);
-    $('#acct-sync').addEventListener('click', onSyncNow);
     $('#acct-logout').addEventListener('click', () => window.SB.signOut());
     return;
   }
@@ -482,10 +480,21 @@ function renderAccount() {
     <form class="auth-form" id="auth-form" autocomplete="on">
       <div class="auth-social">
         <button type="button" class="btn oauth google" id="auth-google">
-          <span class="oauth-ic" aria-hidden="true">G</span> Continue with Google
+          <span class="oauth-ic" aria-hidden="true">
+            <svg viewBox="0 0 18 18" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+              <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+              <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.47.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+            </svg>
+          </span> Continue with Google
         </button>
         <button type="button" class="btn oauth discord" id="auth-discord">
-          <span class="oauth-ic" aria-hidden="true">🎮</span> Continue with Discord
+          <span class="oauth-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#fff" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.61 1.25a18.27 18.27 0 0 0-5.48 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04c-1.71.3-3.35.8-4.89 1.52a.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 6 3.03.08.08 0 0 0 .09-.03c.46-.63.87-1.3 1.23-2a.08.08 0 0 0-.04-.11c-.66-.25-1.28-.55-1.88-.9a.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01 14.2 14.2 0 0 0 12.06 0 .07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1-.01.13c-.6.35-1.23.65-1.88.9a.08.08 0 0 0-.04.11c.36.7.78 1.36 1.23 2a.08.08 0 0 0 .09.03 19.84 19.84 0 0 0 6.01-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.54-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.09 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.09 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/>
+            </svg>
+          </span> Continue with Discord
         </button>
       </div>
       <div class="auth-divider"><span>or with email</span></div>
@@ -575,15 +584,38 @@ async function onSaveDisplayName() {
     await window.SB.updateDisplayName(name);
     await pushCloud();
     authMsg('Display name saved.');
+    updateAuthUI();
     renderLeaderboard();
   } catch (e) { authMsg('Could not save your name.', true); }
 }
 
-async function onSyncNow() {
-  authMsg('Syncing…');
-  await pushCloud();
-  await loadLeaderboard();
-  authMsg('Synced.');
+/* ---------- Top-bar account menu (top-right) ---------- */
+/* Show progress stats + rank only when signed in; otherwise just the Sign in
+   button. Also keeps the account button label current. */
+function updateAuthUI() {
+  const on = !!state.user;
+  ['#hud-stat-collected', '#hud-stat-xp', '#hud-xp-track', '#hud-rank'].forEach(sel => {
+    const el = $(sel);
+    if (el) el.hidden = !on;
+  });
+  const btn = $('#hud-account');
+  if (btn) {
+    const email = state.user && state.user.email ? state.user.email : '';
+    const label = on ? (state.displayName || email.split('@')[0] || 'Account') : 'Sign in';
+    btn.textContent = label;
+    btn.classList.toggle('is-in', on);
+  }
+}
+
+/* Open/close the account popover anchored to the top-right button. */
+function toggleAccountPop(force) {
+  const pop = $('#account-pop');
+  const btn = $('#hud-account');
+  if (!pop || !btn) return;
+  const open = typeof force === 'boolean' ? force : pop.hidden;
+  pop.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+  if (open) renderAccount();
 }
 
 /* ---------- Leaderboard ---------- */
@@ -630,6 +662,7 @@ function renderLeaderboard() {
    login/logout events. */
 function initAuth() {
   renderAccount();
+  updateAuthUI();
   renderLeaderboard();
   loadLeaderboard();
   if (!window.SB || !window.SB.ready) return;
@@ -637,7 +670,7 @@ function initAuth() {
     const u = session ? session.user : null;
     if (u && (!state.user || state.user.id !== u.id)) onSignedIn(u);
     else if (!u && state.user) onSignedOut();
-    else renderAccount();
+    else { renderAccount(); updateAuthUI(); }
   });
 }
 
@@ -658,12 +691,15 @@ async function onSignedIn(user) {
   saveProgress();          // persist merged result locally + push to cloud
   refreshProgressViews();
   renderAccount();
+  updateAuthUI();
+  toggleAccountPop(false);
   loadLeaderboard();
 }
 
 function onSignedOut() {
   state.user = null;
   renderAccount();
+  updateAuthUI();
   renderLeaderboard();
   toast('Signed out. Your progress stays on this device.');
 }
@@ -1564,7 +1600,7 @@ function switchView(name) {
   if (name === 'codex') renderSteelGrid();
   if (name === 'dojo') renderDaily();
   if (name === 'learn') { renderWizard(); renderFixit(); renderAnatomy(); renderVs(); }
-  if (name === 'profile') { renderProfile(); renderAccount(); loadLeaderboard(); }
+  if (name === 'profile') { renderProfile(); loadLeaderboard(); }
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -2408,6 +2444,12 @@ async function init() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeModal();
   });
+
+  // Top-right account menu: toggle the popover; close it on an outside click.
+  $('#hud-account').addEventListener('click', e => { e.stopPropagation(); toggleAccountPop(); });
+  $('#account-pop').addEventListener('click', e => e.stopPropagation());
+  document.addEventListener('click', () => toggleAccountPop(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleAccountPop(false); });
   $('#cta-explore').addEventListener('click', () => switchView('codex'));
   $('#cta-dojo').addEventListener('click', () => switchView('dojo'));
 

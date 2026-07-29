@@ -22,18 +22,24 @@
         </div>
       </div>
       <div class="hud">
-        <div class="stat hide-sm">
+        <div class="stat hide-sm" id="hud-stat-collected" hidden>
           <div class="label">Collected</div>
           <div class="value"><span id="hud-collected">0</span>/<span id="hud-total">0</span></div>
         </div>
-        <div class="stat">
+        <div class="stat" id="hud-stat-xp" hidden>
           <div class="label">XP</div>
           <div class="value" id="hud-xp">0</div>
         </div>
-        <div class="xp-track" title="Progress to next rank">
+        <div class="xp-track" id="hud-xp-track" title="Progress to next rank" hidden>
           <div class="xp-fill" id="hud-xp-fill"></div>
         </div>
-        <button class="rank-badge" id="hud-rank" title="View your profile">Apprentice</button>
+        <button class="rank-badge" id="hud-rank" title="View your profile" hidden>Apprentice</button>
+        <div class="account-menu">
+          <button class="account-btn" id="hud-account" aria-haspopup="dialog" aria-expanded="false">Sign in</button>
+          <div class="account-pop" id="account-pop" role="dialog" aria-label="Account" hidden>
+            <div class="account" id="account"><!-- injected by JS --></div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -265,17 +271,6 @@
 
   <!-- ===== PROFILE VIEW ===== -->
   <section class="view" id="view-profile" data-view="profile" hidden>
-
-    <section class="section wrap" id="account-section">
-      <div class="section-head">
-        <div>
-          <div class="kicker">Cloud Sync</div>
-          <h3>Account</h3>
-        </div>
-        <p>Sign in to save your codex to the cloud and appear on the leaderboard.</p>
-      </div>
-      <div class="account" id="account"><!-- injected by JS --></div>
-    </section>
 
     <section class="section wrap">
       <div class="section-head">

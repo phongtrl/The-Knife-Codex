@@ -57,7 +57,7 @@ body {
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 70;
   backdrop-filter: blur(10px);
   background: rgba(244, 241, 234, 0.82);
   border-bottom: 1px solid var(--line);
@@ -1564,9 +1564,46 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 /* ============================================================
    Account, cloud sync & leaderboard (Supabase)
    ============================================================ */
+/* Top-right account menu + popover */
+.account-menu { position: relative; }
+.account-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.account-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+.account-btn.is-in { background: var(--clay); border-color: var(--clay); }
+.account-pop {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(340px, 92vw);
+  padding: 1.1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 50px -20px rgba(43, 40, 35, 0.55);
+  z-index: 80;
+  animation: viewIn 0.2s var(--ease);
+}
+
 .account { margin-top: 0.4rem; }
-.auth-form { display: flex; flex-direction: column; gap: 0.7rem; max-width: 420px; }
-.auth-input {
+.account-pop .account { margin-top: 0; }
+.account-pop .auth-form,
+.account-pop .account-in { max-width: none; }
+.auth-form { display: flex; flex-direction: column; gap: 0.7rem; max-width: 420px; }.auth-input {
   font-family: var(--font);
   width: 100%;
   font-size: 0.92rem;
@@ -1607,12 +1644,11 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   place-items: center;
   width: 20px; height: 20px;
   border-radius: 50%;
-  font-weight: 700;
-  font-size: 0.8rem;
-  color: #fff;
+  overflow: hidden;
 }
-.btn.oauth.google .oauth-ic { background: #4285f4; }
-.btn.oauth.discord .oauth-ic { background: #5865f2; font-size: 0.7rem; }
+.btn.oauth .oauth-ic svg { display: block; }
+.btn.oauth.google .oauth-ic { background: #fff; }
+.btn.oauth.discord .oauth-ic { background: #5865f2; }
 .auth-divider {
   display: flex;
   align-items: center;

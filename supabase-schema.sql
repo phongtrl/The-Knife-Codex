@@ -11,8 +11,13 @@ create table if not exists public.profiles (
   display_name  text,
   xp            integer     not null default 0,
   knives_found  integer     not null default 0,
+  knives_owned  integer     not null default 0,
   updated_at    timestamptz not null default now()
 );
+
+-- If the profiles table already existed before this column was added, run:
+alter table public.profiles
+  add column if not exists knives_owned integer not null default 0;
 
 alter table public.profiles enable row level security;
 

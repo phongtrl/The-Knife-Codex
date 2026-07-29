@@ -92,7 +92,8 @@ const state = {
   // ---- Cloud / account (Supabase) ----
   user: null,          // signed-in Supabase user, or null
   displayName: '',     // public leaderboard handle
-  leaderboard: []      // cached leaderboard rows
+  leaderboard: [],     // cached leaderboard rows
+  chefResults: []      // cached chef-search results
 };
 
 /* Local calendar date as YYYY-MM-DD (used to seed and gate the Daily Dojo). */
@@ -189,7 +190,8 @@ async function pushCloud() {
     await window.SB.upsertProfile(uid, {
       display_name: state.displayName || null,
       xp: state.xp,
-      knives_found: discoveredKnives()
+      knives_found: discoveredKnives(),
+      knives_owned: ownedKnives()
     });
   } catch (e) { console.warn('[SB] cloud push failed', e); }
 }
@@ -438,6 +440,7 @@ function renderProfile() {
     </div>
     <div class="profile-stats">
       <div class="pstat"><div class="pstat-value">${found}<span class="pstat-sub">/${total}</span></div><div class="pstat-label">Knives Found</div></div>
+      <div class="pstat"><div class="pstat-value">${ownedKnives()}</div><div class="pstat-label">Knives Owned</div></div>
       <div class="pstat"><div class="pstat-value">${steelFound}<span class="pstat-sub">/${steelTotal}</span></div><div class="pstat-label">Steels Studied</div></div>
       <div class="pstat"><div class="pstat-value">${accuracy}<span class="pstat-sub">%</span></div><div class="pstat-label">Dojo Accuracy</div></div>
       <div class="pstat"><div class="pstat-value">${d.rounds}</div><div class="pstat-label">Dojo Rounds</div></div>
@@ -725,14 +728,114 @@ function renderLeaderboard() {
     const pos = i + 1;
     const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos;
     return `
-      <div class="lb-row${me ? ' me' : ''}">
+      <button type="button" class="lb-row${me ? ' me' : ''}" data-lb="${i}">
         <span class="lb-pos">${medal}</span>
         <span class="lb-em">${rank.emoji}</span>
         <span class="lb-name">${escapeHtml(r.display_name || 'Anonymous chef')}</span>
         <span class="lb-knives">${r.knives_found || 0} 🔪</span>
         <span class="lb-xp">${r.xp || 0} XP</span>
-      </div>`;
+      </button>`;
   }).join('');
+}
+
+/* ---------- Chef search & public profiles ---------- */
+let chefSearchTimer = null;
+
+function wireChefSearch() {
+  const input = $('#chef-search');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    clearTimeout(chefSearchTimer);
+    chefSearchTimer = setTimeout(() => runChefSearch(input.value), 300);
+  });
+  // Open a public profile from either a leaderboard row or a search result.
+  const onRowClick = (list, attr) => e => {
+    const row = e.target.closest(`[${attr}]`);
+    if (!row) return;
+    const item = (list())[+row.getAttribute(attr)];
+    if (item) openChefProfile(item);
+  };
+  $('#leaderboard').addEventListener('click', onRowClick(() => state.leaderboard || [], 'data-lb'));
+  $('#chef-results').addEventListener('click', onRowClick(() => state.chefResults || [], 'data-chef'));
+
+  // Close handlers for the chef profile card.
+  $('#chef-close').addEventListener('click', closeChefProfile);
+  $('#chef-back').addEventListener('click', e => {
+    if (e.target === $('#chef-back')) closeChefProfile();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('#chef-back').classList.contains('open')) closeChefProfile();
+  });
+}
+
+async function runChefSearch(query) {
+  const box = $('#chef-results');
+  if (!box) return;
+  const q = (query || '').trim();
+  if (!q) {
+    box.hidden = true;
+    box.innerHTML = '';
+    state.chefResults = [];
+    return;
+  }
+  if (!window.SB || !window.SB.ready) {
+    box.hidden = false;
+    box.innerHTML = `<p class="empty-state">Search is unavailable right now.</p>`;
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = `<p class="empty-state">Searching…</p>`;
+  let rows = [];
+  try {
+    rows = await window.SB.searchProfiles(q, 12);
+  } catch (e) { console.warn('[SB] chef search', e); }
+  state.chefResults = rows;
+  if (!rows.length) {
+    box.innerHTML = `<p class="empty-state">No chefs found for “${escapeHtml(q)}”.</p>`;
+    return;
+  }
+  box.innerHTML = rows.map((r, i) => {
+    const rank = rankFor(r.xp || 0);
+    const me = state.user && state.displayName && r.display_name === state.displayName;
+    return `
+      <button type="button" class="lb-row${me ? ' me' : ''}" data-chef="${i}">
+        <span class="lb-pos">${rank.emoji}</span>
+        <span class="lb-em"></span>
+        <span class="lb-name">${escapeHtml(r.display_name || 'Anonymous chef')}</span>
+        <span class="lb-knives">${r.knives_found || 0} 🔪</span>
+        <span class="lb-xp">${r.xp || 0} XP</span>
+      </button>`;
+  }).join('');
+}
+
+function openChefProfile(profile) {
+  const back = $('#chef-back');
+  if (!back) return;
+  const xp = profile.xp || 0;
+  const rank = rankFor(xp);
+  const next = nextRank(xp);
+  const found = profile.knives_found || 0;
+  const total = totalKnives();
+  const owned = profile.knives_owned || 0;
+  const name = profile.display_name || 'Anonymous chef';
+  const me = state.user && state.displayName && name === state.displayName;
+
+  $('#chef-emoji').textContent = rank.emoji;
+  $('#chef-name').textContent = name + (me ? ' (you)' : '');
+  $('#chef-rank').textContent = rank.name;
+  $('#chef-stats').innerHTML = `
+    <div class="chef-stat"><span class="chef-stat-n">${xp}</span><span class="chef-stat-l">XP</span></div>
+    <div class="chef-stat"><span class="chef-stat-n">${found}/${total}</span><span class="chef-stat-l">Knives found</span></div>
+    <div class="chef-stat"><span class="chef-stat-n">${owned}</span><span class="chef-stat-l">Knives owned</span></div>`;
+  $('#chef-note').textContent = next
+    ? `${next.min - xp} XP to ${next.name}.`
+    : 'Reached the highest rank — Knife Master.';
+  back.classList.add('open');
+}
+
+function closeChefProfile() {
+  const back = $('#chef-back');
+  if (back) back.classList.remove('open');
 }
 
 /* ---------- Auth wiring ---------- */
@@ -1545,6 +1648,13 @@ function totalKnives() {
 /* How many of those the user has discovered so far. */
 function discoveredKnives() {
   return state.collected.size + state.libDiscovered.size;
+}
+
+/* How many knives the user has marked as owned in their Knife Roll (counts
+   every entry, so a knife owned twice counts twice). */
+function ownedKnives() {
+  return Object.values(state.roll)
+    .reduce((n, arr) => n + (Array.isArray(arr) ? arr.length : 0), 0);
 }
 
 /* Record the most recently discovered knife for the Home dashboard. */
@@ -2402,7 +2512,7 @@ function renderDashboard() {
   const total = totalKnives();
   const steelFound = state.steelsRead.size;
   const steelTotal = state.steels.length;
-  const owned = Object.values(state.roll).reduce((n, arr) => n + (Array.isArray(arr) ? arr.length : 0), 0);
+  const owned = ownedKnives();
   const streak = state.daily.streak || 0;
   const dailyDone = state.daily.done && state.daily.date === todayKey();
 
@@ -2549,6 +2659,7 @@ async function init() {
 
   // Cloud accounts, progress sync, and the leaderboard (Supabase).
   initAuth();
+  wireChefSearch();
 }
 
 /* Bind an input + clear button to a filtering callback. */

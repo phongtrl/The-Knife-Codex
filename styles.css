@@ -1706,6 +1706,7 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   background: var(--card);
   transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
+button.lb-row { width: 100%; text-align: left; font: inherit; cursor: pointer; }
 .lb-row:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
 .lb-row.me { border-color: var(--clay); background: var(--paper-2); }
 .lb-pos { font-weight: 700; color: var(--ink-soft); text-align: center; font-size: 0.95rem; }
@@ -1721,4 +1722,59 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .lb-row { grid-template-columns: 1.8rem 1.4rem 1fr auto; gap: 0.5rem; padding: 0.6rem 0.7rem; }
   .lb-knives { display: none; }
 }
+
+/* Chef search + public profile card */
+.chef-search { position: relative; margin-bottom: 0.9rem; }
+.chef-search-ic {
+  position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+  font-size: 0.9rem; opacity: 0.6; pointer-events: none;
+}
+.chef-search-input {
+  width: 100%;
+  padding: 0.7rem 1rem 0.7rem 2.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit; font-size: 0.9rem;
+}
+.chef-search-input:focus { outline: none; border-color: var(--clay-soft); }
+.chef-results {
+  display: flex; flex-direction: column; gap: 0.4rem;
+  margin-bottom: 1.1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+.chef-back { z-index: 110; }
+.chef-card {
+  position: relative;
+  background: var(--card);
+  border-radius: calc(var(--radius) + 6px);
+  width: min(400px, 100%);
+  padding: 2.2rem 1.8rem 1.8rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transform: translateY(20px) scale(0.98);
+  transition: transform 0.35s var(--ease);
+}
+.chef-back.open .chef-card { transform: translateY(0) scale(1); }
+.chef-card .close {
+  position: absolute; top: 0.9rem; right: 0.9rem;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 1rem; color: var(--ink-soft);
+}
+.chef-emoji { font-size: 3rem; line-height: 1; margin-bottom: 0.4rem; }
+.chef-name { margin: 0 0 0.2rem; font-family: var(--font-round); font-size: 1.4rem; }
+.chef-rank { color: var(--clay); font-weight: 600; font-size: 0.9rem; margin-bottom: 1.3rem; }
+.chef-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+.chef-stat {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.8rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper-2);
+}
+.chef-stat-n { font-weight: 700; font-size: 1.05rem; color: var(--ink); }
+.chef-stat-l { font-size: 0.68rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.chef-note { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
 

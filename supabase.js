@@ -99,11 +99,23 @@
     async fetchLeaderboard(limit = 25) {
       const { data, error } = await client
         .from('profiles')
-        .select('display_name, xp, knives_found')
+        .select('display_name, xp, knives_found, knives_owned')
         .order('xp', { ascending: false })
         .order('knives_found', { ascending: false })
         .limit(limit);
       if (error) { console.warn('[SB] fetchLeaderboard', error.message); return []; }
+      return data || [];
+    },
+    async searchProfiles(query, limit = 12) {
+      const q = (query || '').trim().replace(/[%_\\]/g, m => '\\' + m);
+      if (!q) return [];
+      const { data, error } = await client
+        .from('profiles')
+        .select('display_name, xp, knives_found, knives_owned, updated_at')
+        .ilike('display_name', `%${q}%`)
+        .order('xp', { ascending: false })
+        .limit(limit);
+      if (error) { console.warn('[SB] searchProfiles', error.message); return []; }
       return data || [];
     }
   };

@@ -291,6 +291,12 @@
         </div>
         <p>Top chefs by XP across every kitchen.</p>
       </div>
+      <div class="chef-search">
+        <span class="chef-search-ic" aria-hidden="true">🔍</span>
+        <input type="search" id="chef-search" class="chef-search-input"
+               placeholder="Search chefs by name…" aria-label="Search chefs" autocomplete="off" />
+      </div>
+      <div class="chef-results" id="chef-results" hidden><!-- injected by JS --></div>
       <div class="leaderboard" id="leaderboard"><!-- injected by JS --></div>
     </section>
 
@@ -422,6 +428,18 @@
           <span id="m-tip"></span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== Chef profile ===== -->
+  <div class="modal-back chef-back" id="chef-back">
+    <div class="chef-card" role="dialog" aria-modal="true" aria-labelledby="chef-name">
+      <button class="close" id="chef-close" aria-label="Close">✕</button>
+      <div class="chef-emoji" id="chef-emoji" aria-hidden="true">🌱</div>
+      <h3 class="chef-name" id="chef-name">Chef</h3>
+      <div class="chef-rank" id="chef-rank"></div>
+      <div class="chef-stats" id="chef-stats"></div>
+      <p class="chef-note" id="chef-note"></p>
     </div>
   </div>
 

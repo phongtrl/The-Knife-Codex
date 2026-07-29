@@ -1772,7 +1772,12 @@ body.gated .intro-gate {
   }
   .hud-cluster #hud-stat-xp .label { font-size: 0.55rem; }
   .hud-cluster #hud-stat-xp .value { font-size: 0.82rem; line-height: 1; }
-  .brand h1 { white-space: nowrap; }
+  /* Let the brand yield space (truncate) so the account button can never be
+     pushed past the top-bar boundary, and keep the button itself compact. */
+  .brand { min-width: 0; }
+  .brand h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hud { flex-shrink: 0; }
+  .account-menu .account-btn { padding: 0.35rem 0.75rem; font-size: 0.74rem; max-width: 108px; }
   .answers { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: 1fr; }
   .dojo { padding: 1.8rem 1.4rem; }
@@ -1796,6 +1801,7 @@ body.gated .intro-gate {
   .hud .stat .label { font-size: 0.55rem; }
   .hud .stat .value { font-size: 0.95rem; }
   .hud .rank-badge { padding: 0.3rem 0.6rem; font-size: 0.66rem; }
+  .account-menu .account-btn { padding: 0.32rem 0.65rem; font-size: 0.7rem; max-width: 96px; }
   .hero { padding: 2.4rem 0 1rem; }
   .hero .eyebrow { margin-bottom: 0.9rem; }
   .hero .cta-row { flex-direction: column; }

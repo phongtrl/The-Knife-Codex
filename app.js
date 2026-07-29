@@ -43,7 +43,13 @@ const SPECIALIST_RARITIES = new Set(['rare', 'epic']);
    fix-it processes, steel quiz). Loaded from codex-data.js. */
 const CD = window.CODEX_DATA || {};
 
-const STORE_KEY = 'yjk-progress-v1';
+/* Progress is stored per identity so two accounts on the same browser never
+   share a save. storeKey() returns a key scoped to the signed-in user's
+   Supabase id, or a separate guest bucket when signed out. */
+const STORE_BASE = 'yjk-progress-v1';
+function storeKey() {
+  return state.user ? `${STORE_BASE}:u:${state.user.id}` : `${STORE_BASE}:guest`;
+}
 
 // How many questions are drawn (at random) from the pool each round.
 const QUIZ_LENGTH = 12;
@@ -159,14 +165,14 @@ function applyPayload(data) {
 
 function loadProgress() {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
+    const raw = localStorage.getItem(storeKey());
     if (!raw) return;
     applyPayload(JSON.parse(raw));
   } catch (e) { /* ignore corrupt store */ }
 }
 function saveProgress() {
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify(progressPayload()));
+    localStorage.setItem(storeKey(), JSON.stringify(progressPayload()));
   } catch (e) { /* storage may be unavailable */ }
   scheduleCloudSync();
 }
@@ -916,44 +922,31 @@ function initAuth() {
 
 async function onSignedIn(user) {
   state.user = user;
+  // Reset the in-memory handle so a previous account's name can't linger.
+  state.displayName = '';
   const meta = user.user_metadata || {};
   if (meta.display_name) state.displayName = meta.display_name;
+
+  // Isolate accounts on a shared browser: discard whatever was in memory
+  // (guest data or a previously signed-in account) and load ONLY this user's
+  // own namespaced save, then merge their own cloud copy on top. No other
+  // identity's progress can leak in.
+  clearProgressState();
+  loadProgress();                        // reads this user's uid-scoped key
   renderAccount();
   toast('☁️ Signed in — syncing your codex…');
 
-  // Does this device currently hold guest progress worth keeping?
-  const localHasProgress = (state.xp || 0) > 0 || state.collected.size > 0
-    || Object.keys(state.roll).length > 0;
-
   try {
     const remote = await window.SB.fetchProgress(user.id);
-    const remoteHasProgress = !!remote && ((remote.xp || 0) > 0
-      || (Array.isArray(remote.collected) && remote.collected.length > 0)
-      || (remote.roll && Object.keys(remote.roll).length > 0));
-
-    if (remoteHasProgress) {
-      // Returning account: merge cloud save with anything newer on this device.
-      mergeRemote(remote);
-    } else if (localHasProgress) {
-      // Empty/new account but this device has guest progress. Ask before
-      // importing so a fresh account doesn't silently inherit old device data.
-      const keep = await confirmDialog({
-        emoji: '☁️',
-        title: 'Import this device’s progress?',
-        message: 'This account has no saved progress yet. Bring the progress from this device into it, or start this account fresh?',
-        confirmText: 'Import progress',
-        cancelText: 'Start fresh'
-      });
-      if (!keep) clearProgressState();
-    }
+    if (remote) mergeRemote(remote);     // this account's cloud save only
 
     if (!state.displayName) {
       const prof = await window.SB.fetchProfile(user.id);
       if (prof && prof.display_name) state.displayName = prof.display_name;
     }
   } catch (e) { console.warn('[SB] pull failed', e); }
-  saveProgress();          // persist merged result locally + schedule cloud sync
-  await pushCloud();       // and push local-into-account immediately (no debounce)
+  saveProgress();          // persist merged result to this user's key + sync
+  await pushCloud();       // push the merged result to the cloud immediately
   refreshProgressViews();
   renderAccount();
   updateAuthUI();
@@ -963,10 +956,15 @@ async function onSignedIn(user) {
 
 function onSignedOut() {
   state.user = null;
+  state.displayName = '';
+  // Drop the signed-out account's data from memory so nothing carries over to
+  // the next account (or the guest bucket) on this browser.
+  clearProgressState();
+  refreshProgressViews();
   renderAccount();
   updateAuthUI();
   renderLeaderboard();
-  toast('Signed out. Your progress stays on this device.');
+  toast('Signed out.');
 }
 
 /* Re-render every view that reflects saved progress (after a cloud merge). */

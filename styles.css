@@ -74,8 +74,9 @@ body {
   width: 48px; height: 48px;
   display: grid; place-items: center;
   flex: 0 0 auto;
+  overflow: hidden;
 }
-.brand .mark svg { width: 48px; height: 48px; display: block; mix-blend-mode: multiply; }
+.brand .mark svg { width: 100%; height: 100%; display: block; mix-blend-mode: multiply; }
 .brand h1 {
   font-size: 1.05rem;
   font-weight: 700;

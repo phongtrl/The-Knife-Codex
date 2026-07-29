@@ -1014,6 +1014,13 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 }
 .profile-rank-name { font-family: var(--font-round); font-weight: 700; font-size: 1.3rem; }
 .profile-xp { font-size: 0.82rem; color: var(--ink-soft); }
+.profile-chef-name {
+  font-family: var(--font-round);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+.profile-chef-name + .profile-rank-name { font-size: 0.95rem; color: var(--ink-soft); font-weight: 600; margin-top: 1px; }
 .profile-progress { display: flex; flex-direction: column; gap: 0.45rem; }
 .profile-progress-track {
   height: 8px;
@@ -1562,26 +1569,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   .hud-cluster #hud-stat-xp .label { font-size: 0.55rem; }
   .hud-cluster #hud-stat-xp .value { font-size: 0.82rem; line-height: 1; }
   .brand h1 { white-space: nowrap; }
-  /* Collapse the (possibly long) name pill into a tidy circular avatar showing
-     the chef's initial. The full display name still appears in the account
-     popover. Signed-out state keeps the normal "Sign in" pill. */
-  .account-btn.is-in {
-    width: 34px;
-    height: 34px;
-    max-width: none;
-    padding: 0;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    font-size: 0;
-  }
-  .account-btn.is-in::before {
-    content: attr(data-initial);
-    font-family: var(--font-round);
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1;
-  }
   .answers { grid-template-columns: 1fr; }
   .stat-grid { grid-template-columns: 1fr; }
   .dojo { padding: 1.8rem 1.4rem; }

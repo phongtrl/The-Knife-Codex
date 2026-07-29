@@ -406,6 +406,11 @@ function renderProfile() {
   const current = rankFor(state.xp);
   const nxt = nextRank(state.xp);
 
+  // Display name shown at the top of the profile (was previously the top-bar
+  // button label). Falls back to the email handle, then a guest label.
+  const chefName = state.displayName
+    || (state.user && state.user.email ? state.user.email.split('@')[0] : 'Guest chef');
+
   // Progress toward the next rank (mirrors the HUD bar).
   let pct = 100;
   let progressLabel = 'Top rank reached — the codex is yours. 🎉';
@@ -430,6 +435,7 @@ function renderProfile() {
     <div class="profile-rank">
       <span class="profile-rank-em">${current.emoji}</span>
       <div class="profile-rank-text">
+        <div class="profile-chef-name">${escapeHtml(chefName)}</div>
         <div class="profile-rank-name">${current.name} <span class="profile-lvl">· Level ${rankIndex}</span></div>
         <div class="profile-xp">${state.xp} XP earned</div>
       </div>
@@ -703,13 +709,9 @@ function updateAuthUI() {
   });
   const btn = $('#hud-account');
   if (btn) {
-    const email = state.user && state.user.email ? state.user.email : '';
-    const label = on ? (state.displayName || email.split('@')[0] || 'Account') : 'Sign in';
-    btn.textContent = label;
+    btn.textContent = on ? 'Sign out' : 'Sign in';
     btn.classList.toggle('is-in', on);
-    // Initial used for the compact circular avatar shown on small screens.
-    btn.dataset.initial = on ? (label.trim().charAt(0).toUpperCase() || '☁') : '';
-    btn.setAttribute('aria-label', on ? `Account: ${label}` : 'Sign in');
+    btn.setAttribute('aria-label', on ? 'Account menu' : 'Sign in');
   }
 }
 

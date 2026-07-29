@@ -76,3 +76,28 @@ grant select on table public.profiles to anon;
 grant select, insert, update on table public.profiles to authenticated;
 grant select, insert, update on table public.progress to authenticated;
 
+
+-- 4) SELF-SERVICE ACCOUNT DELETION --------------------------
+-- The client cannot delete an auth.users row directly (that needs the
+-- service_role key, which must never ship in a browser). Instead we expose a
+-- SECURITY DEFINER function that runs with the function owner's privileges and
+-- deletes ONLY the caller's own data + auth row. The ON DELETE CASCADE on the
+-- tables above cleans up profiles/progress automatically.
+create or replace function public.delete_user()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- auth.uid() is the id of the currently signed-in caller.
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+-- Lock the function down: only signed-in users may call it, and each call can
+-- only ever affect the caller (auth.uid()), never another account.
+revoke all on function public.delete_user() from public, anon;
+grant execute on function public.delete_user() to authenticated;
+
+

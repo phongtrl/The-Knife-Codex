@@ -70,6 +70,17 @@
       return client.auth.signOut();
     },
 
+    /* ---------- Account deletion ---------- */
+    // Calls the delete_user() RPC (SECURITY DEFINER) which removes the caller's
+    // auth row; ON DELETE CASCADE clears their profile + progress. Then clears
+    // the local session.
+    async deleteAccount() {
+      const { error } = await client.rpc('delete_user');
+      if (error) return { error };
+      await client.auth.signOut();
+      return { error: null };
+    },
+
     /* ---------- Progress (private per-user JSON blob) ---------- */
     async fetchProgress(userId) {
       const { data, error } = await client

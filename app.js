@@ -508,11 +508,14 @@ function renderAccount() {
           <button type="button" class="btn ghost small danger" id="acct-reset">Reset progress</button>
         </div>
         <p class="auth-msg" id="auth-msg" aria-live="polite"></p>
+        <div class="auth-divider"><span>danger zone</span></div>
+        <button type="button" class="btn ghost small danger" id="acct-delete">Delete account</button>
       </div>`;
 
     $('#acct-save-name').addEventListener('click', onSaveDisplayName);
     $('#acct-logout').addEventListener('click', () => window.SB.signOut());
     $('#acct-reset').addEventListener('click', resetProgress);
+    $('#acct-delete').addEventListener('click', onDeleteAccount);
     return;
   }
 
@@ -528,13 +531,6 @@ function renderAccount() {
               <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.47.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
             </svg>
           </span> Continue with Google
-        </button>
-        <button type="button" class="btn oauth discord" id="auth-discord">
-          <span class="oauth-ic" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#fff" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.61 1.25a18.27 18.27 0 0 0-5.48 0 12.6 12.6 0 0 0-.62-1.25.08.08 0 0 0-.08-.04c-1.71.3-3.35.8-4.89 1.52a.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.9 19.9 0 0 0 6 3.03.08.08 0 0 0 .09-.03c.46-.63.87-1.3 1.23-2a.08.08 0 0 0-.04-.11c-.66-.25-1.28-.55-1.88-.9a.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01 14.2 14.2 0 0 0 12.06 0 .07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1-.01.13c-.6.35-1.23.65-1.88.9a.08.08 0 0 0-.04.11c.36.7.78 1.36 1.23 2a.08.08 0 0 0 .09.03 19.84 19.84 0 0 0 6.01-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.54-13.66a.06.06 0 0 0-.03-.03zM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.09 2.16 2.42 0 1.34-.96 2.42-2.16 2.42zm7.97 0c-1.18 0-2.16-1.08-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.09 2.16 2.42 0 1.34-.95 2.42-2.16 2.42z"/>
-            </svg>
-          </span> Continue with Discord
         </button>
       </div>
       <div class="auth-divider"><span>or with email</span></div>
@@ -559,7 +555,6 @@ function renderAccount() {
   $('#auth-signup').addEventListener('click', onSignup);
   $('#auth-magic').addEventListener('click', onMagicLink);
   $('#auth-google').addEventListener('click', () => onOAuth('google'));
-  $('#auth-discord').addEventListener('click', () => onOAuth('discord'));
   $('#auth-reset').addEventListener('click', resetProgress);
 }
 
@@ -610,7 +605,7 @@ async function onMagicLink() {
 }
 
 async function onOAuth(provider) {
-  const label = provider === 'google' ? 'Google' : 'Discord';
+  const label = provider === 'google' ? 'Google' : provider;
   authMsg(`Redirecting to ${label}…`);
   const { error } = await window.SB.signInOAuth(provider);
   // On success the browser navigates away; only errors return here.
@@ -669,6 +664,37 @@ async function resetProgress() {
   renderLeaderboard();
   loadLeaderboard();
   toast('🧹 Progress reset.');
+}
+
+/* Permanently delete the signed-in user's account (auth row + cloud profile &
+   progress via ON DELETE CASCADE), then sign out. Local device progress is
+   left intact so a new sign-up can start fresh. */
+async function onDeleteAccount() {
+  if (!state.user || !window.SB) return;
+  const ok = await confirmDialog({
+    emoji: '⚠️',
+    title: 'Delete your account?',
+    message: 'This permanently deletes your account, leaderboard profile and cloud save. This cannot be undone. (Progress saved on this device is kept.)',
+    confirmText: 'Delete account',
+    cancelText: 'Keep my account'
+  });
+  if (!ok) return;
+
+  authMsg('Deleting your account…');
+  const { error } = await window.SB.deleteAccount();
+  if (error) {
+    authMsg(error.message || 'Could not delete your account.', true);
+    toast('⚠️ Account deletion failed.');
+    return;
+  }
+  // signOut inside deleteAccount triggers onAuthChange → onSignedOut, but call
+  // it here too in case the auth event is missed.
+  state.user = null;
+  renderAccount();
+  updateAuthUI();
+  renderLeaderboard();
+  loadLeaderboard();
+  toast('Your account has been deleted.');
 }
 
 /* ---------- Top-bar account menu (top-right) ---------- */

@@ -1666,7 +1666,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
 }
 .btn.oauth .oauth-ic svg { display: block; }
 .btn.oauth.google .oauth-ic { background: #fff; }
-.btn.oauth.discord .oauth-ic { background: #5865f2; }
 .auth-divider {
   display: flex;
   align-items: center;

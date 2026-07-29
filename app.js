@@ -1299,26 +1299,10 @@ function startQuiz() {
 }
 
 /* ---------- Daily Dojo ----------
-   Five questions, deterministic per calendar day (a date-seeded shuffle so the
-   same five appear all day). Completing all five keeps a daily streak alive. */
-function seededShuffle(arr, seed) {
-  const a = [...arr];
-  let s = seed >>> 0;
-  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function dateSeed(key) {
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-  return h;
-}
+   Five randomly drawn questions. Completing all five keeps a daily streak
+   alive. */
 function dailyQuestions() {
-  const key = todayKey();
-  return seededShuffle(state.quiz, dateSeed(key)).slice(0, DAILY_LENGTH);
+  return shuffle(state.quiz).slice(0, DAILY_LENGTH);
 }
 
 function renderDaily() {

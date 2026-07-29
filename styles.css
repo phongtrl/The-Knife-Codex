@@ -91,9 +91,10 @@ body {
 
 /* ---------- Player HUD ---------- */
 .hud { display: flex; align-items: center; gap: 1.1rem; }
-/* On desktop the cluster is transparent to layout so XP / track / rank sit in
-   the HUD row exactly as before. On mobile it becomes a compact column. */
-.hud-cluster { display: contents; }
+/* On desktop the cluster is a plain horizontal group matching the HUD's own
+   gap, so XP / track / rank read as one row. On mobile it becomes a compact
+   vertical stack (see the responsive block). */
+.hud-cluster { display: flex; align-items: center; gap: 1.1rem; }
 .hud .stat { text-align: right; }
 .hud .stat .label {
   font-size: 0.62rem;
@@ -1546,7 +1547,6 @@ table.compare .name-cell .em { margin-right: 0.4rem; }
   /* Stack the rank badge on top with the XP figure tucked beneath it, so the
      HUD stays narrow and the brand title never wraps. */
   .hud-cluster {
-    display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 2px;

@@ -1495,6 +1495,14 @@ body.gated .intro-gate {
 }
 .daily-check { width: 46px; height: 46px; border-radius: 50%; background: var(--sage); color: #fff; display: grid; place-items: center; font-size: 1.4rem; flex-shrink: 0; }
 .daily-open .btn { white-space: nowrap; }
+.daily-week { display: flex; gap: 0.4rem; margin-top: 0.7rem; }
+.daily-day {
+  width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-round); font-weight: 700; font-size: 0.82rem; color: #fff;
+}
+.daily-day.is-done { background: var(--sage); }
+.daily-day.is-miss { background: var(--clay); opacity: 0.55; }
+.daily-day.is-today { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px currentColor; }
 
 /* ---------- Dojo tool cards (wizard, fix-it, anatomy, vs) ---------- */
 .tool-card, .anatomy, .vs {

@@ -91,8 +91,8 @@ const state = {
   curStreak: 0,      // consecutive correct answers in the current run
   // Lifetime Dojo statistics (persisted).
   dojo: { rounds: 0, answered: 0, correct: 0, best: 0, perfect: 0, bestStreak: 0 },
-  // Daily Dojo tracking (persisted).
-  daily: { date: '', done: false, score: 0, streak: 0, lastDate: '' },
+  // Daily Dojo tracking (persisted). history = date keys of completed days.
+  daily: { date: '', done: false, score: 0, streak: 0, lastDate: '', history: [] },
   modalId: null,     // id of the knife currently shown in the detail modal
   modalKind: null,   // 'knife' | 'stone' | 'steel'
   // ---- Cloud / account (Supabase) ----
@@ -227,11 +227,13 @@ function mergeRemote(remote) {
     });
   }
   if (remote.daily) {
+    const mergedHistory = [...new Set([...(state.daily.history || []), ...(remote.daily.history || [])])].sort();
     if ((remote.daily.date || '') > (state.daily.date || '')) {
       state.daily = { ...state.daily, ...remote.daily };
     } else {
       state.daily.streak = Math.max(state.daily.streak || 0, remote.daily.streak || 0);
     }
+    state.daily.history = mergedHistory;
   }
 }
 
@@ -676,7 +678,7 @@ function clearProgressState() {
   state.achievements = new Set();
   state.seenQuiz = new Set();
   state.dojo = { rounds: 0, answered: 0, correct: 0, best: 0, perfect: 0, bestStreak: 0 };
-  state.daily = { date: '', done: false, score: 0, streak: 0, lastDate: '' };
+  state.daily = { date: '', done: false, score: 0, streak: 0, lastDate: '', history: [] };
   state.dojoMode = 'all';
 }
 
@@ -1305,6 +1307,23 @@ function dailyQuestions() {
   return shuffle(state.quiz).slice(0, DAILY_LENGTH);
 }
 
+/* A row of the last 7 days (oldest→today) with weekday initials, green when
+   the Daily Dojo was completed that day and red when it was missed. */
+function dailyWeekRow() {
+  const INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const done = new Set(state.daily.history || []);
+  let cells = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = todayKey(d);
+    const isDone = done.has(key);
+    const isToday = i === 0;
+    cells += `<span class="daily-day ${isDone ? 'is-done' : 'is-miss'}${isToday ? ' is-today' : ''}" title="${key}${isDone ? ' · completed' : ''}">${INITIALS[d.getDay()]}</span>`;
+  }
+  return `<div class="daily-week" aria-label="Daily Dojo last 7 days">${cells}</div>`;
+}
+
 function renderDaily() {
   const box = $('#daily-dojo');
   if (!box) return;
@@ -1319,6 +1338,7 @@ function renderDaily() {
         <div>
           <h4>Today's Daily Dojo is complete</h4>
           <p>You scored <b>${state.daily.score}</b> / ${DAILY_LENGTH}. Come back tomorrow to extend your streak.</p>
+          ${dailyWeekRow()}
         </div>
         <div class="daily-streak" title="Current streak">🔥 ${streak}</div>
       </div>`;
@@ -1331,6 +1351,7 @@ function renderDaily() {
       <div class="daily-copy">
         <h4>Five questions. One a day.</h4>
         <p>Finish all ${DAILY_LENGTH} to earn a <b>+${DAILY_BONUS} XP</b> bonus and keep your streak alive.</p>
+        ${dailyWeekRow()}
       </div>
       <button class="btn" id="daily-start">Start Daily Dojo</button>
     </div>`;
@@ -1493,6 +1514,8 @@ function finishQuiz() {
         ? (state.daily.streak || 0) + 1
         : 1;
       state.daily.lastDate = today;
+      if (!Array.isArray(state.daily.history)) state.daily.history = [];
+      if (!state.daily.history.includes(today)) state.daily.history.push(today);
       addXp(DAILY_BONUS, 'Daily Dojo complete');
       bonusNote = `<br />+${DAILY_BONUS} XP daily bonus · 🔥 ${state.daily.streak}-day streak`;
     }

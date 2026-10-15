@@ -1482,9 +1482,11 @@ function finishQuiz() {
   if (isDaily) {
     // Mark today's Daily Dojo complete and update the streak.
     const today = todayKey();
+    // `done` may still be true from a previous day — only skip if it was today.
+    const alreadyDoneToday = state.daily.done && state.daily.date === today;
     state.daily.date = today;
     state.daily.score = score;
-    if (!state.daily.done) {
+    if (!alreadyDoneToday) {
       state.daily.done = true;
       // Continue the streak if yesterday was completed, otherwise restart.
       state.daily.streak = (state.daily.lastDate === yesterdayKey())

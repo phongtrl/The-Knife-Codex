@@ -111,6 +111,14 @@ function yesterdayKey() {
   d.setDate(d.getDate() - 1);
   return todayKey(d);
 }
+/* The live Daily Dojo streak: broken (0) unless the last completed day was
+   today or yesterday. Reconciles the stored value so it stays consistent. */
+function currentStreak() {
+  const last = state.daily.lastDate;
+  const alive = last === todayKey() || last === yesterdayKey();
+  if (!alive && (state.daily.streak || 0) !== 0) state.daily.streak = 0;
+  return alive ? (state.daily.streak || 0) : 0;
+}
 
 /* ---------- Persistence ---------- */
 /* The full save payload as a plain object — used for both localStorage and the
@@ -458,7 +466,7 @@ function renderProfile() {
       <div class="pstat"><div class="pstat-value">${steelFound}<span class="pstat-sub">/${steelTotal}</span></div><div class="pstat-label">Steels Studied</div></div>
       <div class="pstat"><div class="pstat-value">${accuracy}<span class="pstat-sub">%</span></div><div class="pstat-label">Dojo Accuracy</div></div>
       <div class="pstat"><div class="pstat-value">${d.rounds}</div><div class="pstat-label">Dojo Rounds</div></div>
-      <div class="pstat"><div class="pstat-value">${state.daily.streak || 0}<span class="pstat-sub"> 🔥</span></div><div class="pstat-label">Daily Streak</div></div>
+      <div class="pstat"><div class="pstat-value">${currentStreak()}<span class="pstat-sub"> 🔥</span></div><div class="pstat-label">Daily Streak</div></div>
       <div class="pstat"><div class="pstat-value">${d.best}</div><div class="pstat-label">Best Round</div></div>
       <div class="pstat"><div class="pstat-value">${d.bestStreak}<span class="pstat-sub"> 🔥</span></div><div class="pstat-label">Best Streak</div></div>
       <div class="pstat"><div class="pstat-value">${d.perfect}</div><div class="pstat-label">Perfect Runs</div></div>
@@ -1329,7 +1337,7 @@ function renderDaily() {
   if (!box) return;
   const today = todayKey();
   const doneToday = state.daily.done && state.daily.date === today;
-  const streak = state.daily.streak || 0;
+  const streak = currentStreak();
 
   if (doneToday) {
     box.innerHTML = `
@@ -1898,7 +1906,7 @@ function achContext() {
     steelsTotal: state.steels.length,
     dojoRounds: state.dojo.rounds,
     perfectRuns: state.dojo.perfect,
-    dailyStreak: state.daily.streak || 0
+    dailyStreak: currentStreak()
   };
 }
 
@@ -2709,7 +2717,7 @@ function renderDashboard() {
   const steelFound = state.steelsRead.size;
   const steelTotal = state.steels.length;
   const owned = ownedKnives();
-  const streak = state.daily.streak || 0;
+  const streak = currentStreak();
   const dailyDone = state.daily.done && state.daily.date === todayKey();
 
   const recent = state.recent || null;

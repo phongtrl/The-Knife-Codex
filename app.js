@@ -1896,6 +1896,49 @@ function wireNav() {
   $$('.navlink').forEach(b => b.addEventListener('click', () => switchView(b.dataset.nav)));
 }
 
+/* True if the touch began inside a horizontally scrollable region (so a sideways
+   drag there scrolls content instead of flipping the page). */
+function inScrollableX(el) {
+  while (el && el.nodeType === 1 && el !== document.body) {
+    if (el.scrollWidth - el.clientWidth > 4) {
+      const ox = getComputedStyle(el).overflowX;
+      if (ox === 'auto' || ox === 'scroll') return true;
+    }
+    el = el.parentElement;
+  }
+  return false;
+}
+
+/* Swipe left/right anywhere on the views to move to the next/previous page. */
+function wireSwipeNav() {
+  const main = document.querySelector('.views');
+  if (!main) return;
+  let startX = 0, startY = 0, startT = 0, tracking = false;
+
+  main.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1 || inScrollableX(e.target)) { tracking = false; return; }
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY; startT = Date.now(); tracking = true;
+  }, { passive: true });
+
+  main.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    if (document.body.classList.contains('gated')) return;     // sign-in gate
+    if (document.querySelector('.modal-back.open')) return;     // a modal is open
+    const t = e.changedTouches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+    if (Date.now() - startT > 600) return;                     // too slow for a flick
+    if (Math.abs(dx) < 60) return;                             // too short
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return;             // too vertical
+    const i = VIEWS.indexOf(state.view);
+    const next = dx < 0 ? i + 1 : i - 1;                       // swipe left -> next page
+    if (i < 0 || next < 0 || next >= VIEWS.length) return;
+    switchView(VIEWS[next]);
+  }, { passive: true });
+}
+
 /* ---------- Achievements ---------- */
 /* Snapshot of the numbers each achievement's check() is evaluated against. */
 function achContext() {
@@ -2850,6 +2893,7 @@ async function init() {
 
   // Persistent navigation router.
   wireNav();
+  wireSwipeNav();
 
   // My Knife Roll ownership controls (single binding; reads state.modalId).
   $('#m-own').addEventListener('change', onOwnToggle);
